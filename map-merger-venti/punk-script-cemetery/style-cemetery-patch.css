@@ -1,0 +1,42 @@
+/* ─── Cemetery entity — grey & spooky ───
+   Add this block BEFORE the responsive media query in style.css
+*/
+
+.entity-card.cemetery-card {
+  border-color: #333;
+  background: linear-gradient(180deg, #141414 0%, #0f0f0f 100%);
+}
+
+.entity-card.cemetery-card::before {
+  background: #8a8a8a;
+}
+
+.entity-card.cemetery-card:hover {
+  border-color: #8a8a8a;
+  box-shadow: 0 4px 20px rgba(138, 138, 138, 0.15);
+}
+
+.entity-card.cemetery-card .entity-desc {
+  color: #666;
+}
+
+.entity-card.cemetery-card .entity-label {
+  color: #999;
+}
+
+/* Cemetery type badge */
+.type-badge.cemetery-badge {
+  background: rgba(138, 138, 138, 0.15);
+  border-color: #8a8a8a;
+  color: #8a8a8a;
+}
+
+/* Cemetery profile fields get grey accents */
+.cemetery-fields h3 {
+  color: #8a8a8a !important;
+}
+
+.cemetery-fields input:focus,
+.cemetery-fields textarea:focus {
+  border-color: #8a8a8a;
+}

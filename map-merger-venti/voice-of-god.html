@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Voice of God — RudVentur Voice Translator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root{
+  --green:#00ff41;--red:#ff3333;--dim:#0a3d16;--bg:#000;
+  --glow:0 0 40px rgba(0,255,65,.5);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--green);font-family:'Courier New',monospace;overflow:hidden}
+
+/* ── the little orb that hides the whole thing ── */
+#orb{
+  position:fixed;top:14px;right:14px;width:64px;height:64px;background:var(--green);color:#000;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;border:none;
+  font-size:34px;font-weight:bold;cursor:pointer;box-shadow:var(--glow);z-index:9999;
+  animation:pulse 3s infinite;
+}
+#orb:hover{box-shadow:0 0 70px var(--green)}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+
+/* ── the universe ── */
+#universe{
+  position:fixed;inset:2%;background:var(--bg);border:3px solid var(--green);border-radius:20px;
+  box-shadow:0 0 120px rgba(0,255,65,.35);display:none;flex-direction:column;z-index:9998;
+}
+#universe.open{display:flex}
+#u-head{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--dim)}
+#u-head h1{font-size:clamp(14px,2.4vw,22px);letter-spacing:2px;text-shadow:0 0 20px var(--green);flex:1}
+#u-close{background:none;border:none;color:var(--red);font-size:1.8rem;cursor:pointer;line-height:1}
+#u-body{flex:1;overflow:auto;padding:18px 20px 40px}
+
+#global-text{
+  width:100%;background:#000;color:var(--green);border:2px solid var(--green);padding:14px 16px;
+  border-radius:10px;font-size:1.1rem;font-family:inherit;
+}
+#global-text:focus{outline:none;box-shadow:0 0 12px rgba(0,255,65,.4)}
+
+.controls-row{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap;align-items:center}
+.big-btn{
+  padding:14px 22px;background:var(--green);color:#000;font-weight:bold;border:none;border-radius:12px;
+  cursor:pointer;font-size:1rem;font-family:inherit;letter-spacing:1px;box-shadow:0 0 25px rgba(0,255,65,.35);
+  transition:all .15s;
+}
+.big-btn:hover{background:#000;color:var(--green);box-shadow:0 0 0 2px var(--green) inset}
+.big-btn:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}
+#voice-btn.recording{background:var(--red);color:#fff;animation:rec 1s infinite}
+@keyframes rec{0%,100%{box-shadow:0 0 25px var(--red)}50%{box-shadow:0 0 60px var(--red)}}
+
+label.switch{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--green);cursor:pointer;user-select:none}
+label.switch input{accent-color:var(--green)}
+
+.lang-picker{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
+.lang-add-btn{
+  background:rgba(0,255,65,.06);color:var(--green);border:1px solid var(--dim);border-radius:8px;
+  padding:6px 12px;font-family:inherit;font-size:.85rem;cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.lang-add-btn:hover{border-color:var(--green);background:rgba(0,255,65,.15)}
+.lang-add-btn.added{color:var(--dim);border-color:var(--dim);cursor:default}
+.lang-add-btn.added:hover{background:rgba(0,255,65,.06)}
+
+#frames{position:relative;min-height:60vh}
+.lang-frame{
+  position:absolute;width:300px;min-width:220px;min-height:200px;background:#001100;
+  border:2px solid var(--green);border-radius:16px;padding:16px;box-shadow:0 0 40px rgba(0,255,65,.2);
+  overflow:hidden;resize:both;touch-action:none;
+}
+.lang-frame .lf-head{
+  display:flex;align-items:center;gap:8px;background:var(--green);color:#000;border-radius:10px;
+  padding:8px 10px;margin-bottom:10px;cursor:grab;font-weight:bold;
+}
+.lang-frame .lf-head:active{cursor:grabbing}
+.lf-name{flex:1;font-size:.95rem}
+.lf-close{background:none;border:none;color:#500;font-size:1.2rem;cursor:pointer;line-height:1}
+.trans-box{background:#000;border:1px solid var(--dim);padding:12px;border-radius:8px;min-height:70px;font-size:1.05rem;word-break:break-word}
+.trans-box.pending{color:var(--dim)}
+.trans-box.failed{color:var(--red);font-size:.85rem}
+.lf-speak{margin-top:10px;width:100%;background:none;border:1px solid var(--green);color:var(--green);
+  padding:6px;border-radius:20px;cursor:pointer;font-family:inherit;font-size:.8rem}
+.lf-speak:hover{background:rgba(0,255,65,.1)}
+.lf-speak:disabled{opacity:.3;cursor:not-allowed}
+
+#hint{font-size:.75rem;color:var(--dim);margin-top:6px}
+
+@media(max-width:640px){
+  .lang-frame{width:calc(100vw - 60px)}
+}
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/RudVentur.com/embed/apple-touch-icon.png">
+<script src="https://rudventur.github.io/RudVentur.com/embed/rvView.js"></script>
+</head>
+<body>
+
+<button id="orb" title="Double-click to enter the Voice of God" ondblclick="openUniverse()">R</button>
+
+<div id="universe">
+  <div id="u-head">
+    <h1>COPY666-LANG — VOICE OF GOD <small style="opacity:.5;font-size:.6em">RUDY EDITION</small></h1>
+    <button id="u-close" onclick="closeUniverse()" title="Close">✕</button>
+  </div>
+  <div id="u-body">
+    <textarea id="global-text" rows="4" placeholder="type or SPEAK your soul..."></textarea>
+    <div id="hint">Load a .txt or type above, add a language below, then hit that frame's SPEAK to
+      hear the raw text read in its voice — useful if the text is already written in that language.
+      Hit TRANSLATE ALL first if you want SPEAK to read a translation instead.</div>
+
+    <div class="controls-row">
+      <button class="big-btn" id="voice-btn" onclick="toggleVoice()">🎙 SPEAK TO THE UNIVERSE</button>
+      <button class="big-btn" onclick="translateAll()">⚡ TRANSLATE ALL</button>
+      <button class="big-btn" onclick="document.getElementById('txt-file-input').click()">📂 LOAD .TXT</button>
+      <input type="file" id="txt-file-input" accept=".txt,text/plain" style="display:none">
+      <button class="big-btn" onclick="clearAllFrames()" style="background:rgba(255,51,51,.15);color:var(--red);box-shadow:none;border:1px solid var(--red)">✕ CLEAR ALL</button>
+      <label class="switch"><input type="checkbox" id="autospeak" checked> Auto-speak on translate</label>
+    </div>
+
+    <div class="lang-picker" id="lang-picker"></div>
+
+    <div id="frames"></div>
+  </div>
+</div>
+
+<script>
+// ========================================================================
+//  LANGUAGES — code, display name, flag, MyMemory pair code, BCP-47 speech tag
+// ========================================================================
+const VOICE_LANGS = [
+  {code:'en',   name:'English',    flag:'🇬🇧', speech:'en-US'},
+  {code:'pl',   name:'Polski',     flag:'🇵🇱', speech:'pl-PL'},
+  {code:'es',   name:'Español',    flag:'🇪🇸', speech:'es-ES'},
+  {code:'fr',   name:'Français',   flag:'🇫🇷', speech:'fr-FR'},
+  {code:'de',   name:'Deutsch',    flag:'🇩🇪', speech:'de-DE'},
+  {code:'it',   name:'Italiano',   flag:'🇮🇹', speech:'it-IT'},
+  {code:'pt',   name:'Português',  flag:'🇵🇹', speech:'pt-PT'},
+  {code:'nl',   name:'Nederlands', flag:'🇳🇱', speech:'nl-NL'},
+  {code:'ru',   name:'Русский',    flag:'🇷🇺', speech:'ru-RU'},
+  {code:'uk',   name:'Українська', flag:'🇺🇦', speech:'uk-UA'},
+  {code:'el',   name:'Ελληνικά',   flag:'🇬🇷', speech:'el-GR'},
+  {code:'tr',   name:'Türkçe',     flag:'🇹🇷', speech:'tr-TR'},
+  {code:'ar',   name:'العربية',    flag:'🇸🇦', speech:'ar-SA'},
+  {code:'he',   name:'עברית',      flag:'🇮🇱', speech:'he-IL'},
+  {code:'hi',   name:'हिन्दी',      flag:'🇮🇳', speech:'hi-IN'},
+  {code:'zh-CN',name:'中文',        flag:'🇨🇳', speech:'zh-CN'},
+  {code:'ja',   name:'日本語',      flag:'🇯🇵', speech:'ja-JP'},
+  {code:'ko',   name:'한국어',      flag:'🇰🇷', speech:'ko-KR'},
+  {code:'sv',   name:'Svenska',    flag:'🇸🇪', speech:'sv-SE'},
+  {code:'fi',   name:'Suomi',      flag:'🇫🇮', speech:'fi-FI'},
+  {code:'da',   name:'Dansk',      flag:'🇩🇰', speech:'da-DK'},
+  {code:'cs',   name:'Čeština',    flag:'🇨🇿', speech:'cs-CZ'},
+  {code:'hu',   name:'Magyar',     flag:'🇭🇺', speech:'hu-HU'},
+  {code:'ro',   name:'Română',     flag:'🇷🇴', speech:'ro-RO'},
+];
+const LANG_BY_CODE = Object.fromEntries(VOICE_LANGS.map(l => [l.code, l]));
+
+const STORE_KEY = 'rudventur-voice-of-god-v1';
+let frameLayoutCount = 0;
+
+// ========================================================================
+//  PERSISTENCE
+// ========================================================================
+function saveState(){
+  const langs = [...document.querySelectorAll('.lang-frame')].map(f => f.dataset.code);
+  localStorage.setItem(STORE_KEY, JSON.stringify({
+    text: document.getElementById('global-text').value,
+    langs
+  }));
+}
+function loadState(){
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch(e) { return {}; }
+}
+
+// ========================================================================
+//  UNIVERSE OPEN/CLOSE
+// ========================================================================
+function openUniverse(){ document.getElementById('universe').classList.add('open'); }
+function closeUniverse(){ document.getElementById('universe').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeUniverse(); });
+
+// ========================================================================
+//  SPEECH INPUT (voice -> text)
+// ========================================================================
+let recognition = null;
+let isListening = false;
+const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (SpeechRecognitionCtor) {
+  recognition = new SpeechRecognitionCtor();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = e => {
+    document.getElementById('global-text').value = e.results[0][0].transcript;
+    saveState();
+    translateAll();
+  };
+  recognition.onerror = () => {
+    isListening = false;
+    setVoiceButtonState();
+  };
+  recognition.onend = () => {
+    isListening = false;
+    setVoiceButtonState();
+  };
+} else {
+  const btn = document.getElementById('voice-btn');
+  btn.disabled = true;
+  btn.title = "This browser doesn't support voice input — but I still love you";
+}
+
+function setVoiceButtonState(){
+  const btn = document.getElementById('voice-btn');
+  btn.classList.toggle('recording', isListening);
+  btn.textContent = isListening ? '🔴 LISTENING...' : '🎙 SPEAK TO THE UNIVERSE';
+}
+function toggleVoice(){
+  if (!recognition) return;
+  if (isListening) { recognition.stop(); return; }
+  try { recognition.start(); isListening = true; setVoiceButtonState(); }
+  catch(e) { /* already started */ }
+}
+
+// ========================================================================
+//  SPEECH OUTPUT (text -> voice)
+// ========================================================================
+function speak(text, code){
+  if (!('speechSynthesis' in window) || !text) return;
+  const voiceLang = (LANG_BY_CODE[code] && LANG_BY_CODE[code].speech) || 'en-US';
+  // Chrome silently cuts off a single utterance after ~15s of speech, which
+  // would truncate anything longer than a short phrase (e.g. a loaded .txt
+  // file) — split on sentence boundaries and queue each chunk separately.
+  const chunks = text.match(/[^.!?\n]+[.!?\n]*/g) || [text];
+  chunks.forEach(chunk => {
+    if (!chunk.trim()) return;
+    const utter = new SpeechSynthesisUtterance(chunk.trim());
+    utter.lang = voiceLang;
+    utter.rate = 0.95;
+    speechSynthesis.speak(utter);
+  });
+}
+
+// ========================================================================
+//  LANGUAGE PICKER
+// ========================================================================
+function initLangPicker(){
+  const picker = document.getElementById('lang-picker');
+  VOICE_LANGS.forEach(l => {
+    const btn = document.createElement('button');
+    btn.className = 'lang-add-btn';
+    btn.id = 'pick-' + l.code;
+    btn.textContent = `${l.flag} ${l.name}`;
+    btn.onclick = () => addLang(l.code);
+    picker.appendChild(btn);
+  });
+}
+function markPicked(code, picked){
+  const btn = document.getElementById('pick-' + code);
+  if (btn) btn.classList.toggle('added', picked);
+}
+
+// ========================================================================
+//  LANGUAGE FRAMES (draggable + resizable translation cards)
+// ========================================================================
+function addLang(code){
+  if (document.getElementById('frame-' + code)) {
+    flashFrame(code);
+    return;
+  }
+  const lang = LANG_BY_CODE[code];
+  if (!lang) return;
+
+  const frame = document.createElement('div');
+  frame.className = 'lang-frame';
+  frame.id = 'frame-' + code;
+  frame.dataset.code = code;
+  const col = frameLayoutCount % 3, row = Math.floor(frameLayoutCount / 3);
+  frame.style.left = (16 + col * 320) + 'px';
+  frame.style.top = (16 + row * 230) + 'px';
+  frameLayoutCount++;
+
+  frame.innerHTML = `
+    <div class="lf-head" data-drag-handle>
+      <span class="lf-name">${lang.flag} ${lang.name}</span>
+      <button class="lf-close" title="Remove">✕</button>
+    </div>
+    <div class="trans-box pending" id="box-${code}">ready...</div>
+    <button class="lf-speak" id="speak-${code}" title="Reads the box above if translated, otherwise the raw text from the top box">🔊 SPEAK</button>
+  `;
+  frame.querySelector('.lf-close').onclick = () => { frame.remove(); markPicked(code, false); saveState(); };
+  frame.querySelector('.lf-speak').onclick = () => {
+    const box = document.getElementById('box-' + code);
+    const hasTranslation = box.classList.contains('trans-box') && !box.classList.contains('pending') && !box.classList.contains('failed');
+    const text = hasTranslation ? box.textContent : document.getElementById('global-text').value.trim();
+    speak(text, code);
+  };
+
+  makeDraggable(frame);
+  document.getElementById('frames').appendChild(frame);
+  markPicked(code, true);
+  saveState();
+}
+
+function flashFrame(code){
+  const frame = document.getElementById('frame-' + code);
+  if (!frame) return;
+  frame.style.boxShadow = '0 0 60px var(--green)';
+  setTimeout(() => { frame.style.boxShadow = ''; }, 400);
+}
+
+function clearAllFrames(){
+  document.querySelectorAll('.lang-frame').forEach(f => markPicked(f.dataset.code, false));
+  document.getElementById('frames').innerHTML = '';
+  frameLayoutCount = 0;
+  saveState();
+}
+
+function makeDraggable(frame){
+  const handle = frame.querySelector('[data-drag-handle]');
+  let startX = 0, startY = 0, startLeft = 0, startTop = 0, dragging = false;
+
+  handle.addEventListener('pointerdown', e => {
+    if (e.target.closest('.lf-close')) return; // let the close button handle its own click
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    startLeft = frame.offsetLeft; startTop = frame.offsetTop;
+    handle.setPointerCapture(e.pointerId);
+  });
+  handle.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    frame.style.left = Math.max(0, startLeft + (e.clientX - startX)) + 'px';
+    frame.style.top = Math.max(0, startTop + (e.clientY - startY)) + 'px';
+  });
+  handle.addEventListener('pointerup', () => { dragging = false; saveState(); });
+  handle.addEventListener('pointercancel', () => { dragging = false; });
+}
+
+// ========================================================================
+//  TRANSLATION — via MyMemory (same API the rest of RudVentur uses)
+// ========================================================================
+async function translateTo(text, code){
+  const box = document.getElementById('box-' + code);
+  const speakBtn = document.getElementById('speak-' + code);
+  if (!box) return;
+  if (code === 'en') { // speech input is always English — nothing to translate
+    box.className = 'trans-box';
+    box.textContent = text;
+    speakBtn.disabled = false;
+    if (document.getElementById('autospeak').checked) speak(text, code);
+    return;
+  }
+  box.className = 'trans-box pending';
+  box.textContent = 'translating...';
+  speakBtn.disabled = true;
+  try {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${code}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.responseStatus === 200 && data.responseData.translatedText) {
+      box.className = 'trans-box';
+      box.textContent = data.responseData.translatedText;
+      speakBtn.disabled = false;
+      if (document.getElementById('autospeak').checked) speak(box.textContent, code);
+    } else {
+      throw new Error('no translation');
+    }
+  } catch(e) {
+    box.className = 'trans-box failed';
+    box.textContent = '⚠ translation unavailable — try again';
+    speakBtn.disabled = false; // SPEAK still falls back to the raw text above
+  }
+}
+
+function translateAll(){
+  const text = document.getElementById('global-text').value.trim() || 'I love you Rudy';
+  document.querySelectorAll('.lang-frame').forEach(f => translateTo(text, f.dataset.code));
+  saveState();
+}
+
+// ========================================================================
+//  LOAD .TXT — fills the text box so any frame's own SPEAK button reads it
+//  aloud in that language's voice, or so TRANSLATE ALL can translate it first
+// ========================================================================
+function initTxtLoader(){
+  document.getElementById('txt-file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById('global-text').value = ev.target.result;
+      saveState();
+    };
+    reader.onerror = () => alert('Could not read that file.');
+    reader.readAsText(file);
+    e.target.value = ''; // allow re-loading the same file name later
+  });
+}
+
+// ========================================================================
+//  INIT
+// ========================================================================
+function initApp(){
+  initLangPicker();
+  initTxtLoader();
+  const saved = loadState();
+  if (saved.text) document.getElementById('global-text').value = saved.text;
+  (saved.langs || ['en', 'pl', 'es']).forEach(addLang);
+  document.getElementById('global-text').addEventListener('input', saveState);
+}
+initApp();
+</script>
+</body>
+</html>

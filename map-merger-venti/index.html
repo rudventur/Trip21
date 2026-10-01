@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ArtSpace City</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a12;font-family:'VT323',monospace;overflow:hidden;width:100vw;height:100vh;color:#00ff41}
+canvas#world{position:fixed;inset:0;z-index:1}
+
+/* ── HUD ── */
+.hud{position:fixed;top:0;left:0;right:0;height:50px;background:rgba(0,0,0,0.94);border-bottom:2px solid #00ff41;display:flex;align-items:center;gap:7px;padding:0 8px;z-index:1000;box-shadow:0 0 20px rgba(0,255,65,0.15);overflow-x:auto}
+.htitle{font-family:'Press Start 2P',monospace;font-size:.36rem;color:#ffe600;text-shadow:0 0 10px #ffe600;line-height:1.7;white-space:nowrap}
+.hsep{width:2px;height:24px;background:rgba(0,255,65,0.2);flex-shrink:0}
+.csearch{display:flex;gap:4px;flex:1;max-width:200px}
+.cinput{flex:1;background:#000;color:#00ff41;border:1.5px solid #00ff41;padding:3px 6px;border-radius:3px;font-family:'VT323',monospace;font-size:.9rem;outline:none;min-width:60px}
+.cinput:focus{border-color:#ffe600}
+.cinput::placeholder{color:rgba(0,255,65,0.25)}
+.hbtn{background:#000;border:1.5px solid #00ff41;color:#00ff41;padding:3px 6px;border-radius:3px;cursor:pointer;font-family:'VT323',monospace;font-size:.8rem;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.hbtn:hover{background:#00ff41;color:#000}
+.hbtn.b{border-color:#00bfff;color:#00bfff}.hbtn.b:hover{background:#00bfff;color:#000}
+.hbtn.o{border-color:#ff6600;color:#ff6600}.hbtn.o:hover{background:#ff6600;color:#000}
+.hbtn.y{border-color:#ffe600;color:#ffe600}.hbtn.y:hover{background:#ffe600;color:#000}
+.hbtn.r{border-color:#ff2244;color:#ff2244}.hbtn.r:hover{background:#ff2244;color:#fff}
+
+/* NOTE button — right-click cycles display intensity: full > medium > small > off */
+#commentBtn.notes-lvl-full{border-color:#ffe600;color:#ffe600;box-shadow:0 0 6px rgba(255,230,0,0.5)}
+#commentBtn.notes-lvl-medium{border-color:#c9b300;color:#c9b300;box-shadow:none}
+#commentBtn.notes-lvl-small{border-color:#8a7a00;color:#8a7a00;box-shadow:none}
+#commentBtn.notes-lvl-off{border-color:#3a3520;color:#55503a;box-shadow:none}
+
+/* ── REDIRECT (big modal) ── */
+.redirect-wrap{position:relative;display:inline-block;flex-shrink:0}
+.redirect-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;padding:1rem}
+.redirect-overlay.show{display:flex}
+.redirect-modal{background:#000;border:2px solid #c084fc;border-radius:10px;max-width:560px;width:92%;box-shadow:0 0 40px rgba(192,132,252,.25)}
+.redirect-modal .rm-head{padding:.9rem 1.3rem;border-bottom:1px solid rgba(192,132,252,.3);display:flex;justify-content:space-between;align-items:center;font-family:'Press Start 2P',monospace;font-size:.6rem;color:#c084fc}
+.redirect-modal .rm-head button{background:none;border:none;color:#c084fc;font-size:22px;cursor:pointer}
+.redirect-grid{display:flex;flex-direction:column;gap:12px;padding:1.3rem}
+.redirect-card{display:block;width:100%;text-align:left;background:rgba(192,132,252,.05);border:1.5px solid rgba(192,132,252,.3);color:#c084fc;border-radius:8px;padding:16px 18px;font-family:'VT323',monospace;font-size:1.15rem;cursor:pointer;transition:all .15s}
+.redirect-card:hover{border-color:#c084fc;background:rgba(192,132,252,.12)}
+.redirect-card.cur{color:rgba(192,132,252,0.35);cursor:default}
+.redirect-card.cur:hover{background:rgba(192,132,252,.05);border-color:rgba(192,132,252,.3)}
+.redirect-card small{opacity:.7;font-size:.8em}
+
+/* ── VIEW MODE MENU (logo click) ── */
+.view-menu{display:none;position:fixed;background:#000;border:1.5px solid #00ff41;border-radius:6px;padding:5px;z-index:2100;min-width:230px;box-shadow:0 12px 40px rgba(0,0,0,.7);font-family:'VT323',monospace}
+.view-menu.show{display:block}
+.view-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:#00ff41;font-family:inherit;font-size:.95rem;padding:8px 9px;cursor:pointer;border-radius:4px}
+.view-menu button:hover{background:#00ff41;color:#000}
+.view-menu .menu-sep{border-top:1px solid rgba(0,255,65,.25);margin:4px 2px}
+.view-menu .settings-toggle{display:flex;align-items:center;justify-content:space-between}
+.view-menu .settings-toggle::after{content:'▸';font-size:.75rem;transition:transform .2s}
+.view-menu .settings-toggle.open::after{transform:rotate(90deg)}
+.view-submenu{display:none;padding-left:.5rem;margin:0 .2rem;border-left:2px solid rgba(0,255,65,.25)}
+.view-submenu.open{display:block}
+.view-submenu button{font-size:.85rem;color:rgba(0,255,65,.75)}
+
+/* ── VEHICLE BAR ── */
+.vbar{position:fixed;bottom:0;left:0;right:0;height:56px;background:rgba(0,0,0,0.94);border-top:2px solid #00ff41;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 6px;z-index:1000}
+.vbtn{width:40px;height:40px;background:#000;border:2px solid rgba(0,255,65,0.25);border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;font-size:1.1rem;gap:1px;flex-shrink:0}
+.vbtn span{font-family:'Press Start 2P',monospace;font-size:.16rem;color:rgba(0,255,65,0.4);line-height:1}
+.vbtn:hover{border-color:#00ff41;background:rgba(0,255,65,0.06)}
+.vbtn.active{border-color:#ffe600;background:rgba(255,230,0,0.08);box-shadow:0 0 10px rgba(255,230,0,0.2)}
+.vbtn.active span{color:#ffe600}
+.spd{font-family:'Press Start 2P',monospace;font-size:.26rem;color:#00bfff;text-align:center;line-height:1.7;border:1px solid rgba(0,191,255,0.25);padding:2px 5px;border-radius:3px;white-space:nowrap}
+
+/* ── GLOBE / COUNTRY SELECTOR ── */
+.globe-btn{position:fixed;bottom:64px;left:10px;z-index:800;width:40px;height:40px;background:rgba(0,0,0,0.9);border:2px solid rgba(0,255,65,0.35);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.2rem;transition:all .15s}
+.globe-btn:hover{border-color:#ffe600;background:rgba(255,230,0,0.08)}
+.country-panel{position:fixed;bottom:110px;left:10px;z-index:810;background:rgba(0,0,0,0.95);border:2px solid #ffe600;border-radius:4px;padding:8px;display:none;width:220px;max-height:50vh;overflow-y:auto}
+.country-panel.show{display:block}
+.country-panel .cp-title{font-family:'Press Start 2P',monospace;font-size:.22rem;color:#ffe600;margin-bottom:6px}
+.country-panel .cp-current{font-family:'VT323',monospace;font-size:.9rem;color:#00ff41;margin-bottom:6px;padding:3px 0;border-bottom:1px solid rgba(0,255,65,0.15)}
+.country-row{padding:4px 6px;cursor:pointer;font-family:'VT323',monospace;font-size:.88rem;color:rgba(0,255,65,0.55);border-radius:2px;transition:all .1s}
+.country-row:hover{background:rgba(0,255,65,0.08);color:#00ff41}
+.country-code{color:#ffe600;font-weight:bold;display:inline-block;width:24px}
+
+/* ── SEARCH TABS ── */
+.stabs{display:flex;gap:0;flex-shrink:0}
+.stab{background:#000;border:1.5px solid rgba(0,255,65,0.2);color:rgba(0,255,65,0.35);padding:3px 5px;font-family:'VT323',monospace;font-size:.7rem;cursor:pointer;transition:all .12s;white-space:nowrap}
+.stab:first-child{border-radius:3px 0 0 3px}.stab:last-child{border-radius:0 3px 3px 0}
+.stab.sactive{background:rgba(0,255,65,0.1);border-color:#00ff41;color:#00ff41}
+.stab:hover{color:#00ff41}
+
+/* ── OVERLAY PANEL ── */
+.ov-panel{position:fixed;top:56px;right:52px;z-index:920;background:rgba(0,0,0,0.96);border:2px solid #00ff41;border-radius:4px;padding:0;display:none;min-width:210px;max-height:70vh;overflow-y:auto}
+.ov-head{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid rgba(0,255,65,0.2);font-family:'Press Start 2P',monospace;font-size:.24rem;color:#00ff41;position:sticky;top:0;background:rgba(0,0,0,0.98);z-index:1}
+.ov-close{background:none;border:1px solid #ff2244;color:#ff2244;padding:1px 4px;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:.18rem;border-radius:2px}
+.ov-close:hover{background:#ff2244;color:#000}
+.ov-section{font-family:'Press Start 2P',monospace;font-size:.16rem;color:rgba(0,255,65,0.3);padding:8px 10px 3px;text-transform:uppercase;letter-spacing:1px;border-top:1px solid rgba(0,255,65,0.08)}
+.ov-row{display:flex;align-items:center;gap:6px;padding:4px 10px;cursor:pointer;border-radius:3px;transition:background .1s}
+.ov-row:hover{background:rgba(0,255,65,0.05)}
+.ov-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .15s}
+.ov-label{font-family:'VT323',monospace;font-size:.85rem;color:rgba(0,255,65,0.6);flex:1}
+.ov-row:hover .ov-label{color:#00ff41}
+.ov-status{font-family:'Press Start 2P',monospace;font-size:.16rem;min-width:20px;text-align:right}
+
+/* ── SEARCH RESULTS PANEL ── */
+.srp{position:fixed;top:54px;left:0;bottom:60px;width:300px;background:rgba(0,0,0,0.96);border-right:2px solid #00bfff;z-index:940;display:none;overflow-y:auto;padding:0}
+.srp-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(0,191,255,0.2);position:sticky;top:0;background:rgba(0,0,0,0.98);z-index:1}
+.srp-title{font-family:'Press Start 2P',monospace;font-size:.26rem;color:#00bfff}
+.srp-close{background:none;border:1px solid #ff2244;color:#ff2244;padding:2px 5px;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:.2rem;border-radius:2px}
+.srp-close:hover{background:#ff2244;color:#000}
+.srp-row{display:flex;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(0,191,255,0.06);cursor:pointer;transition:background .1s}
+.srp-row:hover{background:rgba(0,191,255,0.05)}
+.srp-icon{font-size:1rem;flex-shrink:0;margin-top:2px}
+.srp-info{flex:1;min-width:0}
+.srp-name{font-family:'VT323',monospace;font-size:.9rem;color:#e0e0e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srp-detail{font-family:'VT323',monospace;font-size:.75rem;color:rgba(0,191,255,0.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.srp-extras{font-family:'VT323',monospace;font-size:.7rem;color:rgba(0,255,65,0.4);margin-top:2px}
+.srp-tags{display:flex;gap:4px;margin-top:3px}
+.srp-type{font-family:'VT323',monospace;font-size:.65rem;color:#ff6600;background:rgba(255,102,0,0.1);border:1px solid rgba(255,102,0,0.2);padding:1px 4px;border-radius:2px}
+.srp-src{font-family:'VT323',monospace;font-size:.65rem;color:rgba(0,191,255,0.35);background:rgba(0,191,255,0.05);border:1px solid rgba(0,191,255,0.1);padding:1px 4px;border-radius:2px}
+
+
+.stats{position:fixed;top:56px;left:10px;z-index:900;display:flex;flex-direction:column;gap:3px}
+.spill{background:rgba(0,0,0,0.88);border:1px solid rgba(0,255,65,0.18);border-radius:3px;padding:3px 7px;font-family:'VT323',monospace;font-size:.85rem;color:rgba(0,255,65,0.5);white-space:nowrap}
+.spill b{color:#ffe600}
+
+/* ── LAYERS MENU ── */
+.layers-toggle{position:fixed;top:56px;right:52px;z-index:910;background:rgba(0,0,0,0.9);border:1.5px solid rgba(0,255,65,0.35);border-radius:4px;padding:3px 7px;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:.2rem;color:#00ff41;transition:all .15s;white-space:nowrap}
+.layers-toggle:hover{background:rgba(0,255,65,0.1);border-color:#00ff41}
+.layers-toggle.open{border-color:#ffe600;color:#ffe600}
+.layers-menu{position:fixed;top:78px;right:52px;z-index:905;background:rgba(0,0,0,0.95);border:2px solid rgba(0,255,65,0.3);border-radius:4px;padding:8px 10px;display:none;min-width:175px}
+.layers-menu.show{display:block}
+.lm-title{font-family:'Press Start 2P',monospace;font-size:.2rem;color:#ffe600;margin-bottom:6px}
+.lm-section{font-family:'Press Start 2P',monospace;font-size:.14rem;color:rgba(0,255,65,0.35);margin:6px 0 3px;text-transform:uppercase;letter-spacing:1px}
+.lm-row{display:flex;align-items:center;gap:6px;padding:3px 2px;cursor:pointer;border-radius:3px;transition:background .1s}
+.lm-row:hover{background:rgba(0,255,65,0.05)}
+.lm-row input[type="radio"],.lm-row input[type="checkbox"]{appearance:none;-webkit-appearance:none;width:13px;height:13px;border:2px solid rgba(0,255,65,0.4);border-radius:2px;background:#000;cursor:pointer;position:relative;flex-shrink:0;transition:all .15s}
+.lm-row input[type="radio"]{border-radius:50%}
+.lm-row input[type="radio"]:checked,.lm-row input[type="checkbox"]:checked{border-color:#ffe600;background:#ffe600}
+.lm-row input[type="radio"]:checked::after{content:'';position:absolute;inset:3px;background:#000;border-radius:50%}
+.lm-row input[type="checkbox"]:checked::after{content:'\2713';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#000;font-size:9px;font-weight:bold}
+.lm-row label{font-family:'VT323',monospace;font-size:.85rem;color:rgba(0,255,65,0.6);cursor:pointer;flex:1}
+.lm-row:hover label{color:#00ff41}
+.lm-preview{width:14px;height:14px;border-radius:2px;border:1px solid rgba(0,255,65,0.15);flex-shrink:0}
+
+/* ── ZOOM AXIS ── */
+.zoom-axis{position:fixed;top:56px;right:8px;z-index:900;display:flex;flex-direction:column;align-items:center;background:rgba(0,0,0,0.9);border:1.5px solid rgba(0,255,65,0.3);border-radius:4px;padding:3px 2px;width:38px}
+.zoom-axis .zlabel{font-family:'Press Start 2P',monospace;font-size:.16rem;color:rgba(0,255,65,0.4);margin-bottom:2px}
+.zoom-axis .zbtn{width:28px;height:24px;background:#000;border:1.5px solid rgba(0,255,65,0.35);color:#00ff41;border-radius:3px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .12s;margin:1px 0}
+.zoom-axis .zbtn:hover{background:#00ff41;color:#000}
+.zoom-axis .ztrack{width:5px;height:100px;background:rgba(0,255,65,0.06);border-radius:3px;position:relative;margin:3px 0;cursor:pointer;border:1px solid rgba(0,255,65,0.1)}
+.zoom-axis .zthumb{width:14px;height:9px;background:#00ff41;border-radius:2px;position:absolute;left:50%;transform:translateX(-50%);cursor:grab;box-shadow:0 0 5px rgba(0,255,65,0.3);transition:top .08s}
+.zoom-axis .zlev{font-family:'Press Start 2P',monospace;font-size:.18rem;color:#ffe600;margin-top:2px}
+.zoom-axis .zdesc{font-family:'VT323',monospace;font-size:.6rem;color:rgba(0,191,255,0.4);margin-top:1px;text-align:center;line-height:1.1}
+
+/* ── D-PAD ── */
+.dpad{position:fixed;bottom:64px;right:10px;z-index:800;display:grid;grid-template-columns:32px 32px 32px;grid-template-rows:32px 32px 32px;gap:2px}
+.db{background:rgba(0,0,0,0.88);border:2px solid rgba(0,255,65,0.4);color:#00ff41;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.85rem;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:all .1s}
+.db:active,.db.pressed{background:#00ff41;color:#000}
+.db-c{font-family:'Press Start 2P',monospace;font-size:.18rem;color:rgba(0,255,65,0.3);border-color:rgba(0,255,65,0.15)}
+
+/* ── PANELS ── */
+.fpanel{position:fixed;top:56px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.95);border:2px solid #00bfff;border-radius:4px;padding:8px 10px;z-index:900;font-family:'VT323',monospace;font-size:.82rem;color:#00bfff;display:none;max-width:310px;width:86%;max-height:45vh;overflow-y:auto}
+.fpanel.show{display:block}
+.fptitle{font-family:'Press Start 2P',monospace;font-size:.26rem;color:#00bfff;margin-bottom:5px}
+.fpflight{padding:2px 0;border-bottom:1px solid rgba(0,191,255,0.1);display:flex;justify-content:space-between;gap:5px;font-size:.78rem}
+.fpcl{float:right;background:none;border:none;color:#ff2244;cursor:pointer;font-size:.9rem}
+
+/* ── AIRPORT INDICATOR ── */
+.airport-ind{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.92);border:2px solid #ffe600;border-radius:4px;padding:4px 10px;font-family:'Press Start 2P',monospace;font-size:.22rem;color:#ffe600;z-index:900;display:none;white-space:nowrap;animation:apulse 1.5s infinite}
+@keyframes apulse{0%,100%{box-shadow:0 0 6px rgba(255,230,0,0.2)}50%{box-shadow:0 0 18px rgba(255,230,0,0.6)}}
+
+/* ── TOAST ── */
+.rud-toast{position:fixed;top:54px;left:50%;transform:translateX(-50%) translateY(-8px);background:#000;border:2px solid;border-radius:3px;padding:3px 10px;font-family:'Press Start 2P',monospace;font-size:.22rem;opacity:0;transition:all .3s;z-index:9998;white-space:nowrap;pointer-events:none}
+.rud-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── MODAL ── */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:5000;padding:12px;opacity:0;pointer-events:none;transition:opacity .2s}
+.mo.open{opacity:1;pointer-events:all}
+.mb{background:rgba(0,8,4,0.99);border:3px solid #00ff41;border-radius:3px;padding:15px 13px;max-width:350px;width:100%;max-height:84vh;overflow-y:auto;position:relative;transform:scale(.93);transition:transform .2s;box-shadow:0 0 40px rgba(0,255,65,0.08)}
+.mo.open .mb{transform:scale(1)}
+.mcl{position:absolute;top:6px;right:6px;background:#000;border:2px solid #ff2244;color:#ff2244;padding:2px 5px;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:.26rem;border-radius:2px}
+.mcl:hover{background:#ff2244;color:#000}
+.mh{font-family:'Press Start 2P',monospace;font-size:.4rem;color:#ffe600;text-shadow:0 0 8px #ffe600;margin-bottom:10px}
+.mf{margin-bottom:9px}
+.mf label{display:block;font-family:'Press Start 2P',monospace;font-size:.24rem;color:#00ff41;margin-bottom:3px}
+.mf input,.mf textarea,.mf select{width:100%;background:#000;color:#00ff41;border:1.5px solid rgba(0,255,65,0.35);padding:4px 6px;border-radius:3px;font-family:'VT323',monospace;font-size:.88rem;outline:none}
+.mf input:focus,.mf textarea:focus,.mf select:focus{border-color:#00ff41}
+.mf textarea{resize:vertical;min-height:50px}
+.mf select option{background:#000}
+.chips{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+.chip{padding:2px 5px;border-radius:8px;border:1.5px solid rgba(0,191,255,0.25);background:#000;color:rgba(0,191,255,0.55);font-family:'VT323',monospace;font-size:.75rem;cursor:pointer;transition:all .12s;user-select:none}
+.chip.on{background:#00bfff;color:#000;border-color:#00bfff;font-weight:bold}
+.msave{width:100%;margin-top:10px;padding:8px;background:#00ff41;color:#000;border:none;border-radius:2px;font-family:'Press Start 2P',monospace;font-size:.32rem;cursor:pointer}
+.msave:hover{box-shadow:0 0 14px #00ff41}
+.mbt{font-family:'Press Start 2P',monospace;font-size:.3rem;margin-bottom:3px}
+.mu{font-family:'Press Start 2P',monospace;font-size:.42rem;color:#ffe600;text-shadow:0 0 8px #ffe600;margin-bottom:3px}
+.msig{font-family:'VT323',monospace;font-size:.85rem;color:rgba(0,191,255,0.6);font-style:italic;margin-bottom:9px;border-left:2px solid rgba(0,191,255,0.18);padding-left:6px}
+.msec{border:1px solid;border-radius:2px;padding:7px;margin-bottom:6px}
+.msec-o{border-color:rgba(0,191,255,0.35);background:rgba(0,191,255,0.03)}
+.msec-s{border-color:rgba(255,230,0,0.25);background:rgba(255,230,0,0.02)}
+.mst{font-family:'Press Start 2P',monospace;font-size:.24rem;margin-bottom:3px;color:#00bfff}
+.msec-s .mst{color:#ffe600}
+.mchips{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:3px}
+.mc{font-family:'VT323',monospace;font-size:.75rem;padding:2px 4px;border-radius:2px}
+.mc-o{background:rgba(0,191,255,0.08);border:1px solid rgba(0,191,255,0.25);color:#00bfff}
+.mc-s{background:rgba(255,230,0,0.06);border:1px solid rgba(255,230,0,0.18);color:#ffe600}
+.mdesc{font-family:'VT323',monospace;font-size:.82rem;color:rgba(0,255,65,0.7);line-height:1.4;margin-bottom:3px}
+.mdates{font-family:'VT323',monospace;font-size:.74rem;color:rgba(0,191,255,0.45)}
+.mxch{font-family:'VT323',monospace;font-size:.7rem;color:rgba(0,255,65,0.4)}
+.mcon{width:100%;margin-top:9px;padding:7px;background:#00ff41;color:#000;border:none;border-radius:2px;font-family:'Press Start 2P',monospace;font-size:.3rem;cursor:pointer}
+.mcon:hover{box-shadow:0 0 14px #00ff41}
+
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#000}::-webkit-scrollbar-thumb{background:#00ff41}
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/RudVentur.com/embed/apple-touch-icon.png">
+<script src="https://rudventur.github.io/RudVentur.com/embed/rvView.js"></script>
+</head>
+<body>
+<canvas id="world"></canvas>
+
+<!-- HUD -->
+<div class="hud">
+  <div class="htitle" id="logoBtn" style="cursor:pointer" onclick="toggleViewMenu(event)" title="View options">&#127912; ArtSpace<br>City</div>
+  <div class="hsep"></div>
+  <!-- 3-TAB SEARCH -->
+  <div class="stabs">
+    <div class="stab sactive" id="st-places" onclick="setSearchTab('places')">&#128205; Places</div>
+    <div class="stab" id="st-items" onclick="setSearchTab('items')">&#128722; Items</div>
+    <div class="stab" id="st-general" onclick="setSearchTab('general')">&#128270; All</div>
+  </div>
+  <div class="csearch">
+    <input class="cinput" id="searchInput" type="text" placeholder="City, address, landmark...">
+    <button class="hbtn" onclick="doSearch()">GO</button>
+  </div>
+  <!-- Keep old CI for backwards compat -->
+  <input type="hidden" id="CI" value="">
+  <button class="hbtn o" id="pinBtn" onclick="togglePin()">&#128204; PIN</button>
+  <button class="hbtn b" id="flightBtn" onclick="toggleFlights()">&#9992;&#65039; FLY</button>
+  <button class="hbtn y" id="boardBtn" style="display:none" onclick="boardPlane()">&#128747; BOARD</button>
+  <button class="hbtn b" id="altBtn" style="display:none" onclick="openAltitudeChooser()">ALT</button>
+  <button class="hbtn y" id="approachBtn" style="display:none" onclick="toggleLandingMode()">&#128748; APPROACH</button>
+  <button class="hbtn" id="landBtn" style="display:none" onclick="landPlane()">&#128747; LAND</button>
+  <div class="hsep"></div>
+  <button class="hbtn" onclick="toggleOverlayPanel()" style="border-color:#00ff41;color:#00ff41">&#9881; LAYERS</button>
+  <button class="hbtn y" id="offerFilterBtn" onclick="toggleOfferFilter()">OFFERS</button>
+  <button class="hbtn r" id="redStringBtn" onclick="toggleRedStrings()">STRINGS</button>
+  <button class="hbtn" id="notebookBtn" style="display:none;border-color:#44ff88;color:#44ff88" onclick="toggleUfoNotebook()">&#128221; LOG</button>
+  <button class="hbtn y" id="commentBtn" onclick="toggleCommentMode()">&#128172; NOTE</button>
+  <button class="hbtn" id="dashboardBtn" style="border-color:#011289;color:#6688ff" onclick="toggleDashboard()">&#128203; BOARD</button>
+  <div class="redirect-wrap">
+    <button class="hbtn" id="redirectBtn" style="border-color:#c084fc;color:#c084fc" onclick="openRedirectMenu(event)">&#128257; REDIRECT</button>
+  </div>
+</div>
+
+<!-- VIEW MODE MENU (logo click) — kept outside .hud so its overflow-x:auto
+     (which forces overflow-y:auto too) can't clip a menu below the 50px header bar. -->
+<div class="view-menu" id="viewMenu">
+  <button onclick="setView('horizontal')">Full Screen Horizontal</button>
+  <button onclick="setView('panoramic')">Full Screen Panoramic</button>
+  <button onclick="setView('normal')">Normal / Default Browser</button>
+  <div class="menu-sep"></div>
+  <button class="settings-toggle" onclick="toggleSettingsSubmenu(event)">Settings One</button>
+  <div class="view-submenu" id="viewSubmenu">
+    <button onclick="setView('horizontal')">&#8618; Panoramic — Locked</button>
+    <button onclick="setView('panoramic')">&#8618; Panoramic — Default Rotation</button>
+    <button onclick="setView('vertical')">&#8618; Full Screen Vertical</button>
+  </div>
+</div>
+
+<!-- REDIRECT — big modal; destinations open in a new tab carrying the current view mode -->
+<div class="redirect-overlay" id="redirectOverlay" onclick="if(event.target===this) closeRedirectMenu()">
+  <div class="redirect-modal">
+    <div class="rm-head">
+      <span>&#128257; REDIRECT</span>
+      <button onclick="closeRedirectMenu()">✕</button>
+    </div>
+    <div class="redirect-grid">
+      <span class="redirect-card cur">&#128506;&#65039; Map Merger <small>(here)</small></span>
+      <button class="redirect-card" onclick="goTo('snout-first.html')">&#128062; Snout First</button>
+      <button class="redirect-card" onclick="goTo('translator_v7.html')">&#127760; Translator</button>
+      <button class="redirect-card" onclick="goTo('https://rudventur.github.io/rudTrip20/')">&#127922; rudTrip20</button>
+      <div id="customRedirectCards"></div>
+      <button class="redirect-card" id="newRedirectBtn" onclick="addCustomRedirect()" style="border-style:dashed">&#10133; NEW <small>(your own useR sites, max 3)</small></button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Redirect (big modal) — opens the destination in a new tab, in the current view mode ──
+function openRedirectMenu(e) {
+  e.stopPropagation();
+  document.getElementById('redirectOverlay').classList.add('show');
+}
+function closeRedirectMenu() {
+  document.getElementById('redirectOverlay').classList.remove('show');
+}
+function goTo(url) {
+  closeRedirectMenu();
+  const mode = currentViewMode();
+  const qs = mode && mode !== 'normal' ? '?view=' + encodeURIComponent(mode) : '';
+  window.open(url + qs, '_blank', 'noopener');
+}
+
+// ── Custom REDIRECT sites — your own links, max 3, shared across
+// Map Merger / Translator / Snout First via the same localStorage key ──
+const CUSTOM_SITES_KEY = 'rvCustomSites';
+const CUSTOM_SITES_MAX = 3;
+
+function loadCustomSites() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_SITES_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+function saveCustomSites(sites) {
+  try { localStorage.setItem(CUSTOM_SITES_KEY, JSON.stringify(sites)); } catch (e) {}
+}
+function renderCustomRedirects() {
+  const sites = loadCustomSites();
+  const box = document.getElementById('customRedirectCards');
+  if (box) {
+    box.innerHTML = '';
+    sites.forEach((s, i) => {
+      const card = document.createElement('div');
+      card.className = 'redirect-card';
+      card.style.cssText = 'display:flex;align-items:center;gap:8px;padding:12px 14px';
+
+      const label = document.createElement('span');
+      label.style.cssText = 'flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      label.textContent = '\u{1F310} ' + s.label;
+      label.onclick = () => goTo(s.url);
+
+      const del = document.createElement('span');
+      del.style.cssText = 'cursor:pointer;opacity:.6;padding:0 4px';
+      del.title = 'Remove';
+      del.textContent = '✕';
+      del.onclick = (e) => { e.stopPropagation(); removeCustomRedirect(i); };
+
+      card.appendChild(label);
+      card.appendChild(del);
+      box.appendChild(card);
+    });
+  }
+  const btn = document.getElementById('newRedirectBtn');
+  if (btn) {
+    const full = sites.length >= CUSTOM_SITES_MAX;
+    btn.innerHTML = full
+      ? '&#128274; useR limit reached <small>(' + CUSTOM_SITES_MAX + '/' + CUSTOM_SITES_MAX + ' sites)</small>'
+      : '&#10133; NEW <small>(your own useR sites, ' + sites.length + '/' + CUSTOM_SITES_MAX + ')</small>';
+  }
+}
+function addCustomRedirect() {
+  const sites = loadCustomSites();
+  if (sites.length >= CUSTOM_SITES_MAX) {
+    showToast('\u{1F512} Max ' + CUSTOM_SITES_MAX + ' useR sites reached', '#c084fc');
+    return;
+  }
+  const label = prompt('Name your site:');
+  if (!label) return;
+  let url = prompt('Paste the link:');
+  if (!url) return;
+  url = url.trim();
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  sites.push({ label: label.trim(), url });
+  saveCustomSites(sites);
+  renderCustomRedirects();
+  showToast('✅ Added to REDIRECT!', '#c084fc');
+}
+function removeCustomRedirect(i) {
+  const sites = loadCustomSites();
+  sites.splice(i, 1);
+  saveCustomSites(sites);
+  renderCustomRedirects();
+}
+renderCustomRedirects();
+
+// ── View mode menu (logo click) ──
+function toggleViewMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('viewMenu');
+  if (menu.classList.contains('show')) { closeViewMenu(); return; }
+  const rect = e.currentTarget.getBoundingClientRect();
+  menu.style.top = (rect.bottom + 8) + 'px';
+  menu.style.left = Math.min(Math.max(rect.left, 8), window.innerWidth - 238) + 'px';
+  menu.classList.add('show');
+}
+function closeViewMenu() {
+  document.getElementById('viewMenu').classList.remove('show');
+  document.getElementById('viewSubmenu').classList.remove('open');
+  document.querySelector('.settings-toggle').classList.remove('open');
+}
+function toggleSettingsSubmenu(e) {
+  e.stopPropagation();
+  document.getElementById('viewSubmenu').classList.toggle('open');
+  e.currentTarget.classList.toggle('open');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.view-menu') && !e.target.closest('#logoBtn')) closeViewMenu();
+});
+window.addEventListener('resize', () => closeViewMenu());
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeViewMenu(); closeRedirectMenu(); }
+});
+</script>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="spill">&#127912; Spaces: <b id="SS">0</b></div>
+  <div class="spill">&#9992;&#65039; Flights: <b id="SF">0</b></div>
+  <div class="spill" id="VS">&#128694; Walking</div>
+  <div class="spill" id="transitInfo" style="display:none">&#128652; <span id="transitText">--</span></div>
+</div>
+
+<!-- LAYERS -->
+<div class="layers-toggle" id="layersToggle" onclick="toggleLayersMenu()">&#128506;&#65039; LAYERS</div>
+<div class="layers-menu" id="layersMenu">
+  <div class="lm-title">&#128506;&#65039; MAP LAYERS</div>
+  <div class="lm-section">Base Map</div>
+  <div class="lm-row" onclick="setTileLayer('dark')"><input type="radio" name="bl" id="bl-dark" checked><div class="lm-preview" style="background:#1a1a2e"></div><label>&#127761; Dark</label></div>
+  <div class="lm-row" onclick="setTileLayer('darkclean')"><input type="radio" name="bl" id="bl-darkclean"><div class="lm-preview" style="background:#0d0d1a"></div><label>&#127763; Dark Clean</label></div>
+  <div class="lm-row" onclick="setTileLayer('voyager')"><input type="radio" name="bl" id="bl-voyager"><div class="lm-preview" style="background:linear-gradient(#e8e0d8,#f5f0eb)"></div><label>&#128739; Roads</label></div>
+  <div class="lm-row" onclick="setTileLayer('positron')"><input type="radio" name="bl" id="bl-positron"><div class="lm-preview" style="background:#f2f2f2"></div><label>&#9723; Light</label></div>
+  <div class="lm-row" onclick="setTileLayer('osm')"><input type="radio" name="bl" id="bl-osm"><div class="lm-preview" style="background:#ddd"></div><label>&#128506; OSM</label></div>
+  <div class="lm-row" onclick="setTileLayer('topo')"><input type="radio" name="bl" id="bl-topo"><div class="lm-preview" style="background:linear-gradient(#8b6,#da8)"></div><label>&#9968; Topo</label></div>
+  <div class="lm-row" onclick="setTileLayer('watercolor')"><input type="radio" name="bl" id="bl-watercolor"><div class="lm-preview" style="background:linear-gradient(135deg,#acd,#edb)"></div><label>&#127912; Paint</label></div>
+  <div class="lm-row" onclick="setTileLayer('satellite')"><input type="radio" name="bl" id="bl-satellite"><div class="lm-preview" style="background:linear-gradient(#264,#132)"></div><label>&#128752; Sat</label></div>
+  <div class="lm-section">Overlays</div>
+  <div class="lm-row"><input type="checkbox" id="ov-grid" checked onchange="G.overlays.grid=this.checked"><label>&#128200; Grid</label></div>
+  <div class="lm-row"><input type="checkbox" id="ov-pins" checked onchange="G.overlays.pins=this.checked"><label>&#128204; Pins</label></div>
+  <div class="lm-row"><input type="checkbox" id="ov-flights" onchange="if(this.checked&&!showFlights)toggleFlights();if(!this.checked&&showFlights)toggleFlights()"><label>&#9992; Flights</label></div>
+  <div class="lm-row"><input type="checkbox" id="ov-transit" checked onchange="G.overlays.transit=this.checked"><label>&#128642; Transit</label></div>
+  <div class="lm-row"><input type="checkbox" id="ov-compass" checked onchange="G.overlays.compass=this.checked"><label>&#129517; Compass</label></div>
+  <div class="lm-row"><input type="checkbox" id="ov-weather" onchange="G.overlays.weather=this.checked;if(this.checked)fetchWeather(G.pos.lat,G.pos.lng)"><label>&#127782;&#65039; Weather</label></div>
+</div>
+
+<!-- ZOOM -->
+<div class="zoom-axis">
+  <div class="zlabel">ZOOM</div>
+  <div class="zbtn" onclick="zoomIn()">+</div>
+  <div class="ztrack" id="zTrack"><div class="zthumb" id="zThumb"></div></div>
+  <div class="zbtn" onclick="zoomOut()">&minus;</div>
+  <div class="zlev" id="zLevDisp">15</div>
+  <div class="zdesc" id="zDesc">Streets</div>
+</div>
+
+<!-- GLOBE / COUNTRY SELECTOR -->
+<div class="globe-btn" onclick="toggleCountrySelector()">&#127760;</div>
+<div class="country-panel" id="countryPanel">
+  <div class="cp-title">&#127760; SELECT COUNTRY</div>
+  <div class="cp-current">Current: <b id="countryLabel">None</b></div>
+  <div id="countryList"></div>
+</div>
+
+<!-- FLIGHT PANEL -->
+<div class="fpanel" id="FP">
+  <div class="fptitle">&#9992;&#65039; LIVE FLIGHTS <button class="fpcl" onclick="toggleFlights()">&#10005;</button></div>
+  <div id="FL">Loading...</div>
+</div>
+
+<!-- UFO CONNECTIONS PANEL -->
+<div class="fpanel" id="ufoPanel" style="border-color:#cc44ff;right:10px;left:auto;transform:none;max-width:280px">
+  <div class="fptitle" style="color:#cc44ff">&#129525; CONNECTIONS <button class="fpcl" onclick="toggleUfoPanel()">&#10005;</button></div>
+  <div id="ufoPanelContent"></div>
+  <button class="hbtn" style="width:100%;margin-top:6px;border-color:#cc44ff;color:#cc44ff" onclick="ufoStartDrawString()">&#129525; DRAW STRING</button>
+</div>
+
+<!-- OVERLAY TOGGLE PANEL -->
+<div class="ov-panel" id="overlayPanel"></div>
+
+<!-- SEARCH RESULTS PANEL (left) -->
+<div class="srp" id="searchResultsPanel"></div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="position:fixed;top:54px;left:0;bottom:60px;width:280px;background:rgba(0,0,0,0.96);border-right:3px solid #011289;z-index:950;display:none;overflow-y:auto;padding:8px">
+  <div style="font-family:'Press Start 2P',monospace;font-size:.3rem;color:#011289;text-shadow:0 0 8px #011289;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+    <span>&#128203; DASHBOARD</span>
+    <button onclick="toggleDashboard()" style="background:none;border:1px solid #011289;color:#011289;padding:2px 5px;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:.2rem;border-radius:2px">&#10005;</button>
+  </div>
+  <div id="dashboardContent"></div>
+</div>
+
+<!-- UFO NOTEBOOK -->
+<div class="fpanel" id="ufoNotebook" style="border-color:#44ff88;left:10px;right:auto;transform:none;max-width:280px;top:auto;bottom:120px">
+  <div class="fptitle" style="color:#44ff88">&#128221; NOTEBOOK <button class="fpcl" onclick="toggleUfoNotebook()">&#10005;</button></div>
+  <div id="notebookContent"></div>
+  <button class="hbtn" style="width:100%;margin-top:6px;border-color:#44ff88;color:#44ff88" onclick="addNotebookEntry()">&#128221; LOG FINDING</button>
+</div>
+
+<!-- AIRPORT INDICATOR -->
+<div class="airport-ind" id="airInd">&#128747; NEAR AIRPORT</div>
+
+<!-- D-PAD (classic mode) -->
+<div class="dpad">
+  <div></div><div class="db" data-dir="up">&#9650;</div><div></div>
+  <div class="db" data-dir="left">&#9668;</div>
+  <div class="db db-c" onclick="centerPlayer()" title="Toggle 360° mode">&#127918;</div>
+  <div class="db" data-dir="right">&#9658;</div>
+  <div></div><div class="db" data-dir="down">&#9660;</div><div></div>
+</div>
+
+<!-- VIRTUAL JOYSTICK (analog mode) -->
+<div id="joystickZone" style="display:none;position:fixed;bottom:64px;right:10px;z-index:800;width:120px;height:120px;touch-action:none">
+  <canvas id="joystickCanvas" width="120" height="120" style="width:120px;height:120px"></canvas>
+  <div style="position:absolute;top:-20px;left:0;width:100%;text-align:center;font-family:'Press Start 2P',monospace;font-size:.14rem;color:rgba(0,255,65,0.3)">360° ANALOG</div>
+  <button onclick="toggleAnalogMode()" style="position:absolute;top:-20px;right:0;background:none;border:1px solid rgba(0,255,65,0.3);color:rgba(0,255,65,0.4);padding:1px 4px;font-family:'Press Start 2P',monospace;font-size:.12rem;cursor:pointer;border-radius:2px">D-PAD</button>
+</div>
+
+<!-- VEHICLE BAR -->
+<div class="vbar">
+  <div class="vbtn active" data-v="walk" onclick="setV(this)">&#128694;<span>WALK</span></div>
+  <div class="vbtn" data-v="bike" onclick="setV(this)">&#128690;<span>BIKE</span></div>
+  <div class="vbtn" data-v="scooter" onclick="setV(this)">&#128757;<span>SCOOT</span></div>
+  <div class="vbtn" data-v="car" onclick="setV(this)">&#128663;<span>CAR</span></div>
+  <div class="vbtn" data-v="bus" onclick="setV(this)">&#128652;<span>BUS</span></div>
+  <div class="vbtn" data-v="train" onclick="setV(this)">&#128642;<span>TRAIN</span></div>
+  <div class="vbtn" data-v="boat" onclick="setV(this)">&#9973;<span>BOAT</span></div>
+  <div class="vbtn" data-v="plane" onclick="setV(this)">&#9992;&#65039;<span>PLANE</span></div>
+  <div class="vbtn" data-v="ufo" onclick="setV(this)">&#128760;<span>UFO</span></div>
+  <div class="spd" id="SPD">SPEED<br>5 km/h</div>
+</div>
+
+<!-- MODAL -->
+<div class="mo" id="MO" onclick="if(event.target===this)closeModal()"><div class="mb" id="MB"></div></div>
+
+<!-- SCRIPTS (order matters!) -->
+<script src="config.js"></script>
+<script src="utils.js"></script>
+<script src="tiles.js"></script>
+<script src="train.js"></script>
+<script src="weather.js"></script>
+<script src="boat.js"></script>
+<script src="bike.js"></script>
+<script src="car.js"></script>
+<script src="mode-plane.js"></script>
+<script src="mode-train.js"></script>
+<script src="mode-ufo.js"></script>
+<script src="player.js"></script>
+<script src="search-panel.js"></script>
+<script src="cemetery.js"></script>
+<script src="mushrooms.js"></script>
+<script src="wildlife.js"></script>
+<script src="ui.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

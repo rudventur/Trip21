@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Snout First — Pet Map</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Bubblegum+Sans&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a120a;font-family:'VT323',monospace;overflow:hidden;width:100vw;height:100vh;color:#ffcc66}
+canvas#snoutMap{position:fixed;inset:0;z-index:1}
+
+/* ── HUD ── */
+.hud{position:fixed;top:0;left:0;right:0;height:50px;background:rgba(26,18,10,0.95);border-bottom:3px solid #cc8833;display:flex;align-items:center;gap:8px;padding:0 10px;z-index:1000;box-shadow:0 0 20px rgba(204,136,51,0.2)}
+.htitle{font-family:'Bubblegum Sans',cursive;font-size:1.1rem;color:#ffcc66;text-shadow:0 0 8px rgba(255,204,102,0.4);white-space:nowrap;cursor:pointer}
+.htitle:hover{text-shadow:0 0 14px rgba(255,204,102,0.7)}
+.hsep{width:2px;height:26px;background:rgba(204,136,51,0.25);flex-shrink:0}
+.hbtn{background:rgba(26,18,10,0.9);border:2px solid #cc8833;color:#ffcc66;padding:4px 8px;border-radius:12px;cursor:pointer;font-family:'VT323',monospace;font-size:.9rem;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.hbtn:hover{background:#cc8833;color:#1a120a}
+.hbtn.active{background:#cc8833;color:#1a120a;box-shadow:0 0 10px rgba(204,136,51,0.4)}
+.hbtn.paw{border-color:#88cc44;color:#88cc44}.hbtn.paw:hover,.hbtn.paw.active{background:#88cc44;color:#1a120a}
+.hbtn.red{border-color:#cc4444;color:#ff6666}.hbtn.red:hover{background:#cc4444;color:#fff}
+.csearch{display:flex;gap:4px;flex:1;max-width:180px}
+.cinput{flex:1;background:rgba(0,0,0,0.4);color:#ffcc66;border:2px solid #cc8833;padding:4px 8px;border-radius:12px;font-family:'VT323',monospace;font-size:.95rem;outline:none;min-width:60px}
+.cinput:focus{border-color:#ffcc66}
+.cinput::placeholder{color:rgba(255,204,102,0.3);font-style:italic}
+
+/* ── STATS ── */
+.stats{position:fixed;top:56px;left:10px;z-index:900;display:flex;flex-direction:column;gap:3px}
+.spill{background:rgba(26,18,10,0.9);border:1px solid rgba(204,136,51,0.2);border-radius:8px;padding:4px 8px;font-family:'VT323',monospace;font-size:.85rem;color:rgba(255,204,102,0.6);white-space:nowrap}
+.spill b{color:#88cc44}
+
+/* ── PET PIN MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:rgba(26,18,10,0.98);border:3px solid #cc8833;border-radius:16px;padding:16px;width:90%;max-width:340px;max-height:80vh;overflow-y:auto;box-shadow:0 0 30px rgba(204,136,51,0.3)}
+.modal h2{font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:1.3rem;margin-bottom:10px;text-align:center}
+.modal label{font-family:'VT323',monospace;color:rgba(255,204,102,0.7);font-size:.85rem;display:block;margin:8px 0 3px}
+.modal input,.modal textarea,.modal select{width:100%;background:rgba(0,0,0,0.4);color:#ffcc66;border:2px solid rgba(204,136,51,0.4);padding:6px 8px;border-radius:8px;font-family:'VT323',monospace;font-size:.95rem;outline:none;resize:vertical}
+.modal input:focus,.modal textarea:focus,.modal select:focus{border-color:#ffcc66}
+.modal select{appearance:none;-webkit-appearance:none;cursor:pointer}
+.modal .btn-row{display:flex;gap:8px;margin-top:12px}
+.modal .btn-row button{flex:1}
+
+/* ── PET USERBOX ── */
+.pet-userbox{position:fixed;z-index:1500;background:rgba(26,18,10,0.97);border:3px solid #cc8833;border-radius:16px;padding:14px;width:260px;box-shadow:0 0 30px rgba(204,136,51,0.3);display:none;pointer-events:auto}
+.pet-userbox.show{display:block}
+.pet-userbox .ub-close{position:absolute;top:6px;right:8px;background:none;border:1px solid rgba(204,136,51,0.4);color:#cc8833;padding:1px 6px;border-radius:8px;cursor:pointer;font-size:.8rem}
+.pet-userbox .ub-close:hover{background:#cc8833;color:#1a120a}
+.pet-userbox .ub-emoji{font-size:2.2rem;text-align:center;margin-bottom:4px}
+.pet-userbox .ub-name{font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:1.3rem;text-align:center;text-shadow:0 0 8px rgba(255,204,102,0.3)}
+.pet-userbox .ub-species{text-align:center;color:rgba(255,204,102,0.45);font-size:.82rem;margin-bottom:6px}
+.pet-userbox .ub-bio{color:rgba(255,204,102,0.7);font-size:.92rem;font-style:italic;border-left:3px solid rgba(204,136,51,0.3);padding-left:8px;margin:6px 0}
+.pet-userbox .ub-tags{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.pet-userbox .ub-tag{background:rgba(136,204,68,0.12);border:1px solid rgba(136,204,68,0.3);color:#88cc44;padding:2px 7px;border-radius:10px;font-size:.75rem}
+.pet-userbox .ub-mood{text-align:center;font-size:1.1rem;margin:4px 0}
+.pet-userbox .ub-tracker{display:none;text-align:center;font-size:.72rem;color:#88cc44;background:rgba(136,204,68,0.1);border:1px solid rgba(136,204,68,0.3);border-radius:8px;padding:2px 6px;margin:4px auto;width:fit-content}
+.pet-userbox .ub-time{color:rgba(255,204,102,0.3);font-size:.72rem;text-align:center}
+.pet-userbox .ub-actions{display:flex;gap:6px;margin-top:8px}
+.pet-userbox .ub-actions button{flex:1;font-size:.82rem;padding:4px}
+.pet-userbox .ub-wags{text-align:center;color:#88cc44;font-size:.85rem;margin-top:4px}
+.pet-userbox .ub-hold-bar{position:absolute;top:0;left:0;height:3px;width:0%;background:#88cc44;border-radius:16px 0 0 0;transition:width linear}
+.pet-userbox .ub-more{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(204,136,51,0.3);font-size:.78rem;color:rgba(255,204,102,0.65);line-height:1.5}
+.pet-userbox.expanded .ub-more{display:block}
+.pet-userbox .ub-hold-hint{text-align:center;color:rgba(255,204,102,0.2);font-size:.65rem;margin-top:6px;font-style:italic}
+.pet-userbox.expanded .ub-hold-hint{display:none}
+
+/* ── PET CARD (pack panel) ── */
+.pet-card{background:rgba(0,0,0,0.3);border:2px solid rgba(204,136,51,0.25);border-radius:12px;padding:10px;margin:6px 0;cursor:pointer;transition:all .15s}
+.pet-card:hover{border-color:#cc8833;background:rgba(204,136,51,0.08)}
+.pet-card .name{font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:1.1rem}
+.pet-card .species{color:rgba(255,204,102,0.5);font-size:.8rem}
+.pet-card .bio{color:rgba(255,204,102,0.65);font-size:.85rem;margin-top:4px;font-style:italic}
+.pet-card .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.pet-card .tag{background:rgba(136,204,68,0.15);border:1px solid rgba(136,204,68,0.3);color:#88cc44;padding:1px 6px;border-radius:8px;font-size:.7rem}
+.pet-card .mood{font-size:1rem;margin-top:4px}
+
+/* ── SIDE PANEL (pack/trail) ── */
+.side-panel{position:fixed;top:54px;left:0;bottom:0;width:280px;background:rgba(26,18,10,0.97);border-right:3px solid #cc8833;z-index:950;display:none;overflow-y:auto;padding:10px}
+.side-panel.show{display:block}
+.side-panel h3{font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:1rem;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.side-panel .close-btn{background:none;border:1px solid #cc8833;color:#cc8833;padding:2px 6px;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:.2rem;border-radius:4px}
+
+/* ── SNIFF (post) ── */
+.sniff{background:rgba(0,0,0,0.3);border:2px solid rgba(204,136,51,0.2);border-radius:12px;padding:10px;margin:6px 0}
+.sniff .sniff-head{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.sniff .sniff-name{font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:.95rem}
+.sniff .sniff-time{color:rgba(255,204,102,0.35);font-size:.7rem;margin-left:auto}
+.sniff .sniff-caption{color:rgba(255,204,102,0.75);font-size:.9rem;margin:4px 0}
+.sniff .sniff-mood{font-size:.95rem}
+.sniff .wag-row{display:flex;align-items:center;gap:8px;margin-top:6px}
+.sniff .wag-btn{background:none;border:none;cursor:pointer;font-size:1.1rem;transition:transform .15s}
+.sniff .wag-btn:active{transform:scale(1.4)}
+.sniff .wag-count{color:#88cc44;font-size:.85rem}
+
+/* ── ZOOM ── */
+.zoom-axis{position:fixed;top:56px;right:8px;z-index:900;display:flex;flex-direction:column;align-items:center;background:rgba(26,18,10,0.95);border:2px solid rgba(204,136,51,0.3);border-radius:12px;padding:4px 3px;width:38px}
+.zoom-axis .zbtn{width:28px;height:24px;background:rgba(0,0,0,0.4);border:2px solid rgba(204,136,51,0.4);color:#ffcc66;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .12s;margin:1px 0}
+.zoom-axis .zbtn:hover{background:#cc8833;color:#1a120a}
+.zoom-axis .zlev{font-family:'Press Start 2P',monospace;font-size:.16rem;color:#ffcc66;margin:3px 0}
+
+/* ── REDIRECT (big modal, reuses .modal-overlay) ── */
+.redirect-wrap{position:relative;display:inline-block;flex-shrink:0}
+.redirect-modal{max-width:560px;width:92%}
+.redirect-grid{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.redirect-card{display:block;width:100%;text-align:left;background:rgba(0,0,0,0.3);border:2px solid rgba(204,136,51,0.4);color:#ffcc66;border-radius:12px;padding:18px 20px;font-family:'Bubblegum Sans',cursive;font-size:1.25rem;cursor:pointer;transition:all .15s}
+.redirect-card:hover{border-color:#cc8833;background:rgba(204,136,51,0.12)}
+.redirect-card.cur{color:rgba(255,204,102,0.35);cursor:default}
+.redirect-card.cur:hover{background:rgba(0,0,0,0.3);border-color:rgba(204,136,51,0.4)}
+.redirect-card small{opacity:.7;font-size:.75em}
+
+/* ── VIEW MODE MENU (logo click) ── */
+.view-menu{display:none;position:fixed;background:rgba(26,18,10,0.98);border:2px solid #cc8833;border-radius:12px;padding:6px;z-index:2100;min-width:250px;box-shadow:0 12px 40px rgba(0,0,0,.6);font-family:'VT323',monospace}
+.view-menu.show{display:block}
+.view-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:#ffcc66;font-family:inherit;font-size:1rem;padding:9px 10px;cursor:pointer;border-radius:8px}
+.view-menu button:hover{background:#cc8833;color:#1a120a}
+.view-menu .menu-sep{border-top:1px solid rgba(204,136,51,0.3);margin:4px 2px}
+.view-menu .settings-toggle{display:flex;align-items:center;justify-content:space-between}
+.view-menu .settings-toggle::after{content:'▸';font-size:.8rem;transition:transform .2s}
+.view-menu .settings-toggle.open::after{transform:rotate(90deg)}
+.view-submenu{display:none;padding-left:.6rem;margin:0 .2rem;border-left:2px solid rgba(204,136,51,0.3)}
+.view-submenu.open{display:block}
+.view-submenu button{font-size:.88rem;color:rgba(255,204,102,0.8)}
+
+/* ── ACCOUNT HUB (ported from windows13's useRbox v2) ── */
+#sfuHub{position:fixed;top:60px;right:10px;z-index:1600;font-family:'VT323',monospace}
+#sfuCircle{width:44px;height:44px;border-radius:50%;background:rgba(26,18,10,0.95);border:3px solid #cc8833;display:flex;align-items:center;justify-content:center;font-size:1.4rem;cursor:pointer;box-shadow:0 0 16px rgba(204,136,51,0.35);transition:all .2s}
+#sfuCircle:hover{transform:scale(1.08) rotate(-4deg);box-shadow:0 0 26px rgba(204,136,51,0.55)}
+#sfuPanel{position:absolute;top:52px;right:0;width:280px;max-height:80vh;overflow-y:auto;background:rgba(26,18,10,0.98);border:3px solid #cc8833;border-radius:14px;padding:14px;box-shadow:0 4px 28px rgba(0,0,0,0.5)}
+#sfuPanel.sfu-hidden{display:none}
+.sfu-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(204,136,51,0.25)}
+.sfu-header strong{font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:1rem}
+.sfu-header button{background:none;border:1px solid #cc8833;color:#cc8833;font-size:.95rem;cursor:pointer;padding:2px 7px;border-radius:6px}
+.sfu-header button:hover{background:#cc8833;color:#1a120a}
+#sfuClock{text-align:center;font-size:1.1rem;color:#ffcc66;font-weight:bold;margin-bottom:10px;padding:6px;background:rgba(255,204,102,0.05);border:1px solid rgba(255,204,102,0.25);border-radius:8px}
+#sfuPanel label{display:block;margin:8px 0 3px;font-size:.75rem;color:rgba(255,204,102,0.6);text-transform:uppercase;letter-spacing:1px}
+#sfuPanel input[type=text],#sfuPanel textarea{width:100%;background:rgba(0,0,0,0.4);color:#ffcc66;border:1.5px solid rgba(204,136,51,0.4);padding:6px 8px;font-family:'VT323',monospace;font-size:.9rem;border-radius:8px;outline:none}
+#sfuPanel input[type=text]:focus,#sfuPanel textarea:focus{border-color:#ffcc66}
+#sfuPanel textarea{resize:vertical;min-height:44px}
+.sfu-row{display:flex;gap:6px;align-items:center}
+.sfu-row input{flex:1}
+.sfu-section{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(204,136,51,0.25)}
+#sfuSpotList{max-height:120px;overflow-y:auto;margin-top:6px}
+.sfu-spot-item{display:flex;justify-content:space-between;align-items:center;padding:5px 7px;margin-bottom:5px;background:rgba(0,0,0,0.3);border:1px solid rgba(204,136,51,0.25);border-radius:8px;font-size:.8rem}
+.sfu-spot-item:hover{border-color:#cc8833}
+.sfu-spot-name{display:block;font-family:'Bubblegum Sans',cursive;color:#ffcc66}
+.sfu-spot-coords{display:block;font-size:.65rem;color:rgba(255,204,102,0.4)}
+.sfu-spot-del{background:none;border:none;color:#ff6666;cursor:pointer;font-size:.85rem;padding:0 4px}
+.sfu-social-section{margin-top:12px;padding-top:10px;border-top:1px dashed rgba(204,136,51,0.25)}
+.sfu-social-title{text-align:center;color:#ffcc66;font-size:.85rem;margin-bottom:8px;font-family:'Bubblegum Sans',cursive}
+.sfu-social-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:6px}
+.sfu-social-icon{width:38px;height:38px;background:rgba(0,0,0,0.3);border:2px solid #cc8833;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;text-decoration:none;color:#ffcc66;transition:all .15s}
+.sfu-social-icon:hover{background:#cc8833;color:#1a120a;transform:scale(1.1)}
+
+/* ── BONE DIVIDER ── */
+.bone-divider{text-align:center;color:rgba(204,136,51,0.2);font-size:.7rem;margin:8px 0;letter-spacing:4px}
+
+/* ── CLOWN + SPOT BUTTON STYLES ── */
+.hbtn.spot{border-color:#e6a820;color:#e6a820}.hbtn.spot:hover,.hbtn.spot.active{background:#e6a820;color:#1a120a}
+.hbtn.clown{border-color:#ff69b4;color:#ff69b4}.hbtn.clown:hover,.hbtn.clown.active{background:#ff69b4;color:#1a120a}
+.clown-badge{position:fixed;bottom:12px;right:120px;z-index:1000;background:rgba(26,18,10,0.95);border:2px solid #ff69b4;color:#ff69b4;padding:4px 10px;border-radius:12px;font-family:'VT323',monospace;font-size:.85rem;display:none}
+.clown-badge.show{display:block}
+
+/* ── D-PAD ── */
+.dpad{position:fixed;bottom:50px;right:10px;z-index:800;display:grid;grid-template-columns:32px 32px 32px;grid-template-rows:32px 32px 32px;gap:2px}
+.db{background:rgba(26,18,10,0.88);border:2px solid rgba(204,136,51,0.4);color:#ffcc66;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:all .1s}
+.db:active,.db.pressed{background:#cc8833;color:#1a120a}
+.db-c{font-family:'Press Start 2P',monospace;font-size:.18rem;color:rgba(204,136,51,0.3);border-color:rgba(204,136,51,0.15)}
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/RudVentur.com/embed/apple-touch-icon.png">
+<script src="https://rudventur.github.io/RudVentur.com/embed/rvView.js"></script>
+</head>
+<body>
+
+<!-- HUD -->
+<div class="hud">
+  <div class="htitle" onclick="toggleViewMenu(event)" title="View options" style="cursor:pointer">&#128062; Snout First</div>
+  <div class="hsep"></div>
+  <div class="csearch">
+    <input class="cinput" id="searchInput" type="text" placeholder="Sniff sniff...">
+    <button class="hbtn" onclick="searchPlace()">GO</button>
+  </div>
+  <div class="hsep"></div>
+  <button class="hbtn paw" onclick="togglePinPet()">&#128062; PIN PET</button>
+  <button class="hbtn spot" onclick="toggleSpotDropMode()">&#128205; SPOT</button>
+  <button class="hbtn" onclick="toggleTrail()">&#128017; TRAIL</button>
+  <button class="hbtn" onclick="togglePack()">&#128058; PACK</button>
+  <button class="hbtn clown" onclick="toggleClownMe()" id="btnClown">&#129313; SHOW ME</button>
+  <div class="redirect-wrap">
+    <button class="hbtn" onclick="openRedirectMenu(event)">&#128257; Redirect</button>
+  </div>
+</div>
+
+<!-- VIEW MODE MENU (logo click) -->
+<div class="view-menu" id="viewMenu">
+  <button onclick="setView('horizontal')">Full Screen Horizontal</button>
+  <button onclick="setView('panoramic')">Full Screen Panoramic</button>
+  <button onclick="setView('normal')">Normal / Default Browser</button>
+  <div class="menu-sep"></div>
+  <button class="settings-toggle" onclick="toggleSettingsSubmenu(event)">Settings One</button>
+  <div class="view-submenu" id="viewSubmenu">
+    <button onclick="setView('horizontal')">&#8618; Panoramic — Locked</button>
+    <button onclick="setView('panoramic')">&#8618; Panoramic — Default Rotation</button>
+    <button onclick="setView('vertical')">&#8618; Full Screen Vertical</button>
+  </div>
+</div>
+
+<!-- REDIRECT — big modal; destinations open in a new tab carrying the current view mode -->
+<div class="modal-overlay" id="redirectOverlay" onclick="if(event.target===this) closeRedirectMenu()">
+  <div class="modal redirect-modal">
+    <h2>&#128257; Redirect</h2>
+    <div class="redirect-grid">
+      <span class="redirect-card cur">&#128062; Snout First <small>(here)</small></span>
+      <button class="redirect-card" onclick="goTo('index.html')">&#128506;&#65039; Map Merger</button>
+      <button class="redirect-card" onclick="goTo('translator_v7.html')">&#127760; Translator</button>
+      <button class="redirect-card" onclick="goTo('https://rudventur.github.io/rudTrip20/')">&#127922; rudTrip20</button>
+      <div id="customRedirectCards"></div>
+      <button class="redirect-card" id="newRedirectBtn" onclick="addCustomRedirect()" style="border-style:dashed">&#10133; NEW <small>(your own useR sites, max 3)</small></button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── View mode (Full Screen Horizontal / Panoramic / Vertical / Normal) ──
+// Shared with index.html (the RUDVENTUR hub) and translator_v7.html via the
+// same localStorage key, so "Redirect" can carry the current mode across tabs.
+const VIEW_MODE_KEY = 'rvViewMode';
+
+function requestFS() {
+  const el = document.documentElement;
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  return fn ? fn.call(el).catch(() => {}) : Promise.resolve();
+}
+function exitFS() {
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) return Promise.resolve();
+  const fn = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+  return fn ? fn.call(document).catch(() => {}) : Promise.resolve();
+}
+function lockOrientation(type) {
+  try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock(type).catch(() => {}); } catch (e) {}
+}
+function unlockOrientation() {
+  try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+}
+function applyViewMode(mode) {
+  switch (mode) {
+    case 'horizontal': requestFS().then(() => lockOrientation('landscape')); break;
+    case 'panoramic':  requestFS().then(() => unlockOrientation()); break;
+    case 'vertical':   requestFS().then(() => lockOrientation('portrait')); break;
+    case 'normal':      unlockOrientation(); exitFS(); break;
+  }
+}
+function currentViewMode() {
+  return localStorage.getItem(VIEW_MODE_KEY) || '';
+}
+function setView(mode) {
+  localStorage.setItem(VIEW_MODE_KEY, mode);
+  closeViewMenu();
+  applyViewMode(mode);
+}
+
+// Adopt ?view= from a Redirect link (highest priority), else fall back to the
+// last mode chosen on this device. Fullscreen needs a real user gesture, so
+// it's applied on first touch/click rather than immediately on load.
+let pendingViewMode = null;
+(function initViewModeFromNavigation() {
+  const params = new URLSearchParams(location.search);
+  const urlMode = params.get('view');
+  if (urlMode) {
+    localStorage.setItem(VIEW_MODE_KEY, urlMode);
+    params.delete('view');
+    const clean = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
+    history.replaceState(null, '', clean);
+    pendingViewMode = urlMode;
+  } else {
+    pendingViewMode = localStorage.getItem(VIEW_MODE_KEY);
+  }
+})();
+document.addEventListener('touchstart', function once() {
+  document.removeEventListener('touchstart', once);
+  if (pendingViewMode && pendingViewMode !== 'normal') {
+    applyViewMode(pendingViewMode);
+  } else if (window.innerWidth < 800 && document.documentElement.requestFullscreen) {
+    requestFS();
+  }
+}, { once: true });
+
+// ── View mode menu (logo click) ──
+function toggleViewMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('viewMenu');
+  if (menu.classList.contains('show')) { closeViewMenu(); return; }
+  const rect = e.currentTarget.getBoundingClientRect();
+  menu.style.top = (rect.bottom + 8) + 'px';
+  menu.style.left = Math.min(Math.max(rect.left, 8), window.innerWidth - 258) + 'px';
+  menu.classList.add('show');
+}
+function closeViewMenu() {
+  document.getElementById('viewMenu').classList.remove('show');
+  document.getElementById('viewSubmenu').classList.remove('open');
+  document.querySelector('.settings-toggle').classList.remove('open');
+}
+function toggleSettingsSubmenu(e) {
+  e.stopPropagation();
+  document.getElementById('viewSubmenu').classList.toggle('open');
+  e.currentTarget.classList.toggle('open');
+}
+
+// ── Redirect (big modal) — opens the destination in a new tab, in the current view mode ──
+function openRedirectMenu(e) {
+  e.stopPropagation();
+  document.getElementById('redirectOverlay').classList.add('show');
+}
+function closeRedirectMenu() {
+  document.getElementById('redirectOverlay').classList.remove('show');
+}
+function goTo(url) {
+  closeRedirectMenu();
+  const mode = currentViewMode();
+  const qs = mode && mode !== 'normal' ? '?view=' + encodeURIComponent(mode) : '';
+  window.open(url + qs, '_blank', 'noopener');
+}
+
+// ── Custom REDIRECT sites — your own links, max 3, shared across
+// Map Merger / Translator / Snout First via the same localStorage key ──
+const CUSTOM_SITES_KEY = 'rvCustomSites';
+const CUSTOM_SITES_MAX = 3;
+
+function loadCustomSites() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_SITES_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+function saveCustomSites(sites) {
+  try { localStorage.setItem(CUSTOM_SITES_KEY, JSON.stringify(sites)); } catch (e) {}
+}
+function renderCustomRedirects() {
+  const sites = loadCustomSites();
+  const box = document.getElementById('customRedirectCards');
+  if (box) {
+    box.innerHTML = '';
+    sites.forEach((s, i) => {
+      const card = document.createElement('div');
+      card.className = 'redirect-card';
+      card.style.cssText = 'display:flex;align-items:center;gap:8px;padding:12px 14px';
+
+      const label = document.createElement('span');
+      label.style.cssText = 'flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      label.textContent = '\u{1F310} ' + s.label;
+      label.onclick = () => goTo(s.url);
+
+      const del = document.createElement('span');
+      del.style.cssText = 'cursor:pointer;opacity:.6;padding:0 4px';
+      del.title = 'Remove';
+      del.textContent = '✕';
+      del.onclick = (e) => { e.stopPropagation(); removeCustomRedirect(i); };
+
+      card.appendChild(label);
+      card.appendChild(del);
+      box.appendChild(card);
+    });
+  }
+  const btn = document.getElementById('newRedirectBtn');
+  if (btn) {
+    const full = sites.length >= CUSTOM_SITES_MAX;
+    btn.innerHTML = full
+      ? '&#128274; useR limit reached <small>(' + CUSTOM_SITES_MAX + '/' + CUSTOM_SITES_MAX + ' sites)</small>'
+      : '&#10133; NEW <small>(your own useR sites, ' + sites.length + '/' + CUSTOM_SITES_MAX + ')</small>';
+  }
+}
+function addCustomRedirect() {
+  const sites = loadCustomSites();
+  if (sites.length >= CUSTOM_SITES_MAX) {
+    toast('\u{1F512} Max ' + CUSTOM_SITES_MAX + ' useR sites reached');
+    return;
+  }
+  const label = prompt('Name your site:');
+  if (!label) return;
+  let url = prompt('Paste the link:');
+  if (!url) return;
+  url = url.trim();
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  sites.push({ label: label.trim(), url });
+  saveCustomSites(sites);
+  renderCustomRedirects();
+  toast('✅ Added to REDIRECT!');
+}
+function removeCustomRedirect(i) {
+  const sites = loadCustomSites();
+  sites.splice(i, 1);
+  saveCustomSites(sites);
+  renderCustomRedirects();
+}
+renderCustomRedirects();
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.view-menu') && !e.target.closest('.htitle')) closeViewMenu();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeViewMenu(); closeRedirectMenu(); }
+});
+</script>
+
+<!-- ═══ ACCOUNT HUB (ported from windows13's useRbox v2, restyled to Snout First) ═══ -->
+<div id="sfuHub">
+  <div id="sfuCircle" onclick="sfuToggle()" title="useRbox">&#128062;</div>
+  <div id="sfuPanel" class="sfu-hidden">
+    <div class="sfu-header">
+      <strong>&#128062; useRbox</strong>
+      <button onclick="sfuToggle()">&times;</button>
+    </div>
+    <div id="sfuClock">--:--:--</div>
+
+    <label>&#128100; Display Name</label>
+    <div class="sfu-row">
+      <input type="text" id="sfuUsername" placeholder="Anonymous Walker">
+      <button class="hbtn paw" onclick="sfuSaveName()">&#128190;</button>
+    </div>
+
+    <label>&#128221; Your Motto</label>
+    <textarea id="sfuSignature" placeholder="e.g. Professional treat negotiator, full-time good boy manager..."></textarea>
+
+    <div class="sfu-section">
+      <label>&#128205; Saved Walk Spots</label>
+      <div class="sfu-row">
+        <input type="text" id="sfuSpotLat" placeholder="lat (or refresh)">
+        <input type="text" id="sfuSpotLon" placeholder="lon">
+        <button class="hbtn" id="sfuGpsBtn" onclick="sfuRefreshGPS()" title="Use my real GPS location">&#128205;</button>
+      </div>
+      <div class="sfu-row" style="margin-top:5px">
+        <input type="text" id="sfuSpotName" placeholder="Spot name...">
+        <button class="hbtn paw" onclick="sfuSaveSpot()">&#128190; Save</button>
+      </div>
+      <div id="sfuSpotList"></div>
+    </div>
+
+    <div class="sfu-social-section">
+      <div class="sfu-social-title">&#128062; Part of RudVentur</div>
+      <div class="sfu-social-grid">
+        <a href="https://github.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="GitHub">&#128187;</a>
+        <a href="https://discord.gg/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Discord">&#128172;</a>
+        <a href="https://twitter.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Twitter/X">&#120143;</a>
+        <a href="https://instagram.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Instagram">&#128247;</a>
+        <a href="https://youtube.com/@rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="YouTube">&#9654;&#65039;</a>
+        <a href="https://ko-fi.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Ko-fi">&#9749;</a>
+        <a href="https://tiktok.com/@rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="TikTok">&#127925;</a>
+        <a href="https://t.me/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Telegram">&#9992;&#65039;</a>
+        <a href="mailto:RudVentur@gmail.com" class="sfu-social-icon" title="Email">&#128231;</a>
+      </div>
+    </div>
+
+    <button class="hbtn red" style="width:100%;margin-top:10px" onclick="sfuClearData()">&#128465;&#65039; Reset local data</button>
+  </div>
+</div>
+
+<script>
+// ═══ Account hub logic ═══
+function sfuToggle() {
+  document.getElementById('sfuPanel').classList.toggle('sfu-hidden');
+  if (!document.getElementById('sfuPanel').classList.contains('sfu-hidden')) sfuLoad();
+}
+
+// Anchor to the right panel's outer edge instead of a fixed viewport spot, so it
+// moves with the panel (collapsed vs expanded) instead of sitting on top of it.
+// #rpRoot doesn't exist yet when this script runs (panel-right.js loads later),
+// so the first call falls back to a default until it appears.
+function sfuRepositionHub() {
+  const hub = document.getElementById('sfuHub');
+  const rp = document.getElementById('rpRoot');
+  if (!hub) return;
+  if (rp) {
+    const rect = rp.getBoundingClientRect();
+    hub.style.right = (window.innerWidth - rect.left + 8) + 'px';
+  } else {
+    hub.style.right = '10px';
+  }
+}
+sfuRepositionHub();
+// panel-right.js's own init() is itself deferred to DOMContentLoaded (its script
+// isn't the last thing in the document either), so #rpRoot may not exist yet even
+// here. Re-run one macrotask after DOMContentLoaded — by then every synchronous
+// DOMContentLoaded listener, including panel-right's, has already finished, so this
+// isn't a timing guess the way a fixed setTimeout delay would be.
+document.addEventListener('DOMContentLoaded', () => setTimeout(sfuRepositionHub, 0));
+window.addEventListener('resize', sfuRepositionHub);
+document.addEventListener('transitionend', e => {
+  if (e.target && e.target.id === 'rpRoot') sfuRepositionHub();
+});
+
+function sfuUpdateClock() {
+  const el = document.getElementById('sfuClock');
+  if (el) el.textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
+}
+setInterval(sfuUpdateClock, 1000);
+sfuUpdateClock();
+
+function sfuLoad() {
+  document.getElementById('sfuUsername').value = (typeof getUserName === 'function') ? getUserName() : 'Anonymous Walker';
+  document.getElementById('sfuSignature').value = localStorage.getItem('sf_owner_signature') || '';
+  sfuRenderSpots();
+}
+
+function sfuSaveName() {
+  const name = document.getElementById('sfuUsername').value.trim();
+  if (!name) { if (typeof toast === 'function') toast('Every walker needs a name! \u{1F43E}'); return; }
+  if (typeof setUserName === 'function') setUserName(name);
+  if (typeof toast === 'function') toast('\u{1F464} Name updated to ' + name + '!');
+}
+
+document.getElementById('sfuSignature') && document.getElementById('sfuSignature').addEventListener('blur', () => {
+  localStorage.setItem('sf_owner_signature', document.getElementById('sfuSignature').value);
+});
+
+function sfuGetSpots() {
+  try { return JSON.parse(localStorage.getItem('sf_walk_spots') || '[]'); } catch(e) { return []; }
+}
+
+// Real device GPS, not just wherever the map happens to be panned to.
+function sfuRefreshGPS() {
+  const btn = document.getElementById('sfuGpsBtn');
+  if (!navigator.geolocation) { if (typeof toast === 'function') toast('GPS not supported by this browser \u{1F43E}'); return; }
+  btn.textContent = '⏳';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('sfuSpotLat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('sfuSpotLon').value = pos.coords.longitude.toFixed(6);
+      btn.textContent = '✅';
+      setTimeout(() => { btn.textContent = '\u{1F4CD}'; }, 1500);
+    },
+    err => {
+      if (typeof toast === 'function') toast('GPS error: ' + err.message);
+      btn.textContent = '❌';
+      setTimeout(() => { btn.textContent = '\u{1F4CD}'; }, 1500);
+    },
+    { timeout: 8000 }
+  );
+}
+
+function sfuSaveSpot() {
+  const name = document.getElementById('sfuSpotName').value.trim();
+  if (!name) { if (typeof toast === 'function') toast('Name this spot first! \u{1F43E}'); return; }
+  const typedLat = parseFloat(document.getElementById('sfuSpotLat').value);
+  const typedLon = parseFloat(document.getElementById('sfuSpotLon').value);
+  // Falls back to the current map centre if GPS was never refreshed for this save.
+  const lat = isNaN(typedLat) ? (typeof S !== 'undefined' ? S.lat : null) : typedLat;
+  const lon = isNaN(typedLon) ? (typeof S !== 'undefined' ? S.lon : null) : typedLon;
+  if (lat == null || lon == null) return;
+  const spots = sfuGetSpots();
+  spots.push({ id: Date.now(), name, lat, lon });
+  localStorage.setItem('sf_walk_spots', JSON.stringify(spots));
+  document.getElementById('sfuSpotName').value = '';
+  document.getElementById('sfuSpotLat').value = '';
+  document.getElementById('sfuSpotLon').value = '';
+  sfuRenderSpots();
+  if (typeof toast === 'function') toast('\u{1F4CD} ' + name + ' saved!');
+}
+function sfuRenderSpots() {
+  const list = document.getElementById('sfuSpotList');
+  const spots = sfuGetSpots();
+  if (!spots.length) {
+    list.innerHTML = '<div style="text-align:center;opacity:.4;padding:8px;font-size:.75rem">No saved spots yet</div>';
+    return;
+  }
+  list.innerHTML = spots.map(s => `
+    <div class="sfu-spot-item">
+      <span onclick="sfuGoToSpot(${s.id})" style="cursor:pointer;flex:1">
+        <span class="sfu-spot-name">${s.name.replace(/</g,'&lt;')}</span>
+        <span class="sfu-spot-coords">${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</span>
+      </span>
+      <button class="sfu-spot-del" onclick="sfuDeleteSpot(${s.id})">&#128465;&#65039;</button>
+    </div>
+  `).join('');
+}
+function sfuGoToSpot(id) {
+  const spot = sfuGetSpots().find(s => s.id === id);
+  if (!spot || typeof S === 'undefined') return;
+  S.lat = spot.lat; S.lon = spot.lon;
+  if (typeof zoomTarget !== 'undefined') zoomTarget = 15;
+  sfuToggle();
+}
+function sfuDeleteSpot(id) {
+  const spots = sfuGetSpots().filter(s => s.id !== id);
+  localStorage.setItem('sf_walk_spots', JSON.stringify(spots));
+  sfuRenderSpots();
+}
+
+function sfuClearData() {
+  if (!confirm('Reset all local Snout First data on this device? This clears pets pinned only in this browser, your notes, saved spots, and settings. Pets already saved to the network are not affected.')) return;
+  ['snoutfirst_pets','snoutfirst_sniffs','snoutfirst_pets_v2','sf_notes','sf_home','sf_lost_pets','sf_vets_custom','sf_food_custom','sf_walk_spots','sf_owner_signature','rv_username','rv_local_uid'].forEach(k => localStorage.removeItem(k));
+  if (typeof toast === 'function') toast('\u{1F5D1}\u{FE0F} Local data cleared! Reloading...');
+  setTimeout(() => location.reload(), 900);
+}
+</script>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="spill">&#128062; Pets: <b id="petCount">0</b></div>
+  <div class="spill">&#128017; Sniffs: <b id="sniffCount">0</b></div>
+  <div class="spill">&#128205; Spots: <b id="spotCount">0</b></div>
+  <div class="spill">&#129313; Clowns: <b id="clownCount">0</b></div>
+</div>
+
+<!-- ZOOM -->
+<div class="zoom-axis">
+  <div class="zbtn" onclick="zoomIn()">+</div>
+  <div class="zlev" id="zoomLev">15</div>
+  <div class="zbtn" onclick="zoomOut()">&minus;</div>
+</div>
+
+<!-- D-PAD -->
+<div class="dpad">
+  <div></div><div class="db" data-dir="up">&#9650;</div><div></div>
+  <div class="db" data-dir="left">&#9668;</div>
+  <div class="db db-c">&#128062;</div>
+  <div class="db" data-dir="right">&#9658;</div>
+  <div></div><div class="db" data-dir="down">&#9660;</div><div></div>
+</div>
+
+<!-- TRAIL PANEL -->
+<div class="side-panel" id="trailPanel">
+  <h3>&#128017; The Trail <button class="close-btn" onclick="toggleTrail()">&#10005;</button></h3>
+  <div id="trailContent"></div>
+</div>
+
+<!-- PACK PANEL -->
+<div class="side-panel" id="packPanel">
+  <h3>&#128058; The Pack <button class="close-btn" onclick="togglePack()">&#10005;</button></h3>
+  <div id="packContent"></div>
+</div>
+
+<!-- PIN PET MODAL -->
+<div class="modal-overlay" id="pinModal">
+  <div class="modal">
+    <h2>&#128062; Drop a Pet Pin</h2>
+    <label>Pet Name</label>
+    <input id="pinName" placeholder="Sir Barkington III">
+    <label>Species</label>
+    <select id="pinSpecies">
+      <option value="dog">&#128054; Dog</option>
+      <option value="cat">&#128049; Cat</option>
+      <option value="bird">&#128038; Bird</option>
+      <option value="fish">&#128032; Fish</option>
+      <option value="rabbit">&#128048; Rabbit</option>
+      <option value="hamster">&#128057; Hamster</option>
+      <option value="reptile">&#129422; Reptile</option>
+      <option value="other">&#128062; Other</option>
+    </select>
+    <label>Breed (optional)</label>
+    <input id="pinBreed" placeholder="Golden Chaos Machine">
+    <label>Bio (as the pet!)</label>
+    <textarea id="pinBio" rows="2" placeholder="I bark at the mailman because he's suspicious. No further questions."></textarea>
+    <label>Personality Tags</label>
+    <input id="pinTags" placeholder="Zoomie King, Treat Goblin, Lap Monster">
+    <label>Current Mood</label>
+    <select id="pinMood">
+      <option value="playful">&#127934; Playful</option>
+      <option value="sleepy">&#128564; Sleepy</option>
+      <option value="hungry">&#127830; Hungry</option>
+      <option value="majestic">&#128081; Majestic</option>
+      <option value="chaos">&#129313; Chaos Mode</option>
+    </select>
+    <div class="btn-row">
+      <button class="hbtn" onclick="closePinModal()">Cancel</button>
+      <button class="hbtn paw" onclick="savePetPin()">&#128062; Pin It!</button>
+    </div>
+  </div>
+</div>
+
+<!-- PET USERBOX (floating popup) -->
+<div class="pet-userbox" id="petUserbox">
+  <div class="ub-hold-bar" id="ubHoldBar"></div>
+  <button class="ub-close" onclick="closeUserbox()">&times;</button>
+  <div class="ub-emoji" id="ubEmoji"></div>
+  <div class="ub-name" id="ubName"></div>
+  <div class="ub-species" id="ubSpecies"></div>
+  <div class="ub-bio" id="ubBio"></div>
+  <div class="ub-tags" id="ubTags"></div>
+  <div class="ub-mood" id="ubMood"></div>
+  <div class="ub-tracker" id="ubTracker"></div>
+  <div class="ub-wags" id="ubWags"></div>
+  <div class="ub-time" id="ubTime"></div>
+  <div class="ub-more" id="ubMore"></div>
+  <div class="ub-hold-hint" id="ubHoldHint">hold anywhere here for 3s for more info 🐾</div>
+  <div class="ub-actions">
+    <button class="hbtn paw" onclick="wagFromUserbox()">&#128062; Wag!</button>
+    <button class="hbtn" onclick="panToPetFromUserbox()">&#127760; Go To</button>
+    <button class="hbtn red" onclick="deletePetFromUserbox()">&#128465; Remove</button>
+  </div>
+</div>
+
+<!-- CLOWN STATUS BADGE -->
+<div class="clown-badge" id="clownBadge">&#129313; You're visible</div>
+
+<canvas id="snoutMap"></canvas>
+
+<!-- Firebase SDK (compat mode for CDN) -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+<!-- Snout First modules -->
+<script src="js/firebase-config.js"></script>
+<script src="js/distance.js"></script>
+<script src="js/pet-registration.js"></script>
+<script src="js/feeding.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/wandering.js"></script>
+<script src="js/petuserbox.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  Snout First — Pet Map (same tile engine as ArtSpace City)
+// ═══════════════════════════════════════════════════════════════
+
+const cv = document.getElementById('snoutMap');
+const cx = cv.getContext('2d');
+
+// ── State ──
+const S = {
+  lat: 51.505, lon: -0.09,  // London default
+  zoom: 13,
+  pets: [],
+  sniffs: [],
+  pinMode: false,
+  trailOpen: false,
+  packOpen: false,
+};
+
+const TILE_SZ = 256;
+const ZOOM_MIN = 2, ZOOM_MAX = 18;
+let zoomTarget = S.zoom;
+const tileCache = {};
+let tileCacheKeys = [];
+const MAX_TILES = 400;
+
+// Active userbox state
+let activeUserboxPetIndex = -1;
+
+// Species emoji map
+const SPECIES_EM = {
+  dog:'\u{1F436}', cat:'\u{1F431}', bird:'\u{1F426}', fish:'\u{1F420}', rabbit:'\u{1F430}',
+  hamster:'\u{1F439}', reptile:'\u{1F98E}', other:'\u{1F43E}'
+};
+
+const MOOD_EM = {
+  playful:'\u{1F3BE}', sleepy:'\u{1F634}', hungry:'\u{1F356}', majestic:'\u{1F451}', chaos:'\u{1F921}'
+};
+
+// ── Tile math (Web Mercator) ──
+function lon2tile(lon, z) { return ((lon + 180) / 360) * Math.pow(2, z); }
+function lat2tile(lat, z) {
+  const r = lat * Math.PI / 180;
+  return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z);
+}
+function tile2lon(x, z) { return x / Math.pow(2, z) * 360 - 180; }
+function tile2lat(y, z) {
+  const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z);
+  return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+}
+
+function worldToScreen(lat, lon) {
+  const iz = Math.floor(S.zoom), frac = Math.pow(2, S.zoom - iz);
+  const scale = TILE_SZ * frac;
+  const cx2 = lon2tile(S.lon, iz), cy2 = lat2tile(S.lat, iz);
+  const tx = lon2tile(lon, iz), ty = lat2tile(lat, iz);
+  return {
+    x: cv.width / 2 + (tx - cx2) * scale,
+    y: cv.height / 2 + (ty - cy2) * scale
+  };
+}
+
+function screenToWorld(sx, sy) {
+  const iz = Math.floor(S.zoom), frac = Math.pow(2, S.zoom - iz);
+  const scale = TILE_SZ * frac;
+  const cx2 = lon2tile(S.lon, iz), cy2 = lat2tile(S.lat, iz);
+  const tx = cx2 + (sx - cv.width / 2) / scale;
+  const ty = cy2 + (sy - cv.height / 2) / scale;
+  return { lat: tile2lat(ty, iz), lon: tile2lon(tx, iz) };
+}
+
+// ── Tile loading (same OSM tiles as ArtSpace) ──
+function tileUrl(x, y, z) {
+  const sub = ['a','b','c'][(x + y) % 3];
+  return `https://${sub}.tile.openstreetmap.org/${z}/${x}/${y}.png`;
+}
+
+function loadTile(url) {
+  if (tileCache[url]) return tileCache[url];
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function() { img._loaded = true; };
+  img.onerror = function() { img._failed = true; };
+  img.src = url;
+  tileCache[url] = img;
+  tileCacheKeys.push(url);
+  if (tileCacheKeys.length > MAX_TILES) {
+    const old = tileCacheKeys.shift();
+    delete tileCache[old];
+  }
+  return img;
+}
+
+// ── Canvas resize ──
+function resize() {
+  cv.width = window.innerWidth;
+  cv.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── Draw tiles ──
+function drawTiles() {
+  const iz = Math.floor(S.zoom);
+  const frac = Math.pow(2, S.zoom - iz);
+  const scale = TILE_SZ * frac;
+  const cxT = lon2tile(S.lon, iz), cyT = lat2tile(S.lat, iz);
+  const halfW = cv.width / 2 / scale, halfH = cv.height / 2 / scale;
+  const x0 = Math.floor(cxT - halfW) - 1, x1 = Math.ceil(cxT + halfW) + 1;
+  const y0 = Math.floor(cyT - halfH) - 1, y1 = Math.ceil(cyT + halfH) + 1;
+  const maxT = Math.pow(2, iz);
+
+  // Warm sepia tint for pet-friendly feel
+  if (typeof cx.filter !== 'undefined') {
+    cx.filter = 'sepia(0.3) saturate(1.15) brightness(1.05) hue-rotate(-8deg)';
+  }
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (y < 0 || y >= maxT) continue;
+      const wx = ((x % maxT) + maxT) % maxT;
+      const sx = cv.width / 2 + (x - cxT) * scale;
+      const sy = cv.height / 2 + (y - cyT) * scale;
+      const img = loadTile(tileUrl(wx, y, iz));
+      if (img._loaded && img.naturalWidth) {
+        cx.drawImage(img, sx, sy, scale + 1, scale + 1);
+      } else {
+        cx.fillStyle = '#d4c5a9';
+        cx.fillRect(sx, sy, scale + 1, scale + 1);
+      }
+    }
+  }
+  cx.filter = 'none';
+}
+
+// ── Draw pet pins ──
+function drawPets() {
+  S.pets.forEach((pet, i) => {
+    const p = worldToScreen(pet.lat, pet.lon);
+    // Skip if off screen
+    if (p.x < -40 || p.x > cv.width + 40 || p.y < -40 || p.y > cv.height + 40) return;
+
+    const isActive = (i === activeUserboxPetIndex);
+
+    // Paw shadow
+    cx.beginPath();
+    cx.arc(p.x, p.y + 3, isActive ? 20 : 16, 0, Math.PI * 2);
+    cx.fillStyle = 'rgba(0,0,0,0.3)';
+    cx.fill();
+
+    // Pin circle
+    cx.beginPath();
+    cx.arc(p.x, p.y, isActive ? 20 : 16, 0, Math.PI * 2);
+    cx.fillStyle = isActive ? 'rgba(204,136,51,0.95)' : 'rgba(26,18,10,0.92)';
+    cx.fill();
+    cx.strokeStyle = pet.mood === 'chaos' ? '#ff4444' : isActive ? '#ffcc66' : '#cc8833';
+    cx.lineWidth = isActive ? 3.5 : 2.5;
+    cx.stroke();
+
+    // Species emoji
+    cx.font = (isActive ? '20' : '16') + 'px sans-serif';
+    cx.textAlign = 'center';
+    cx.textBaseline = 'middle';
+    cx.fillText(SPECIES_EM[pet.species] || '\u{1F43E}', p.x, p.y);
+
+    // Name label
+    cx.font = '13px "Bubblegum Sans", cursive';
+    cx.fillStyle = '#ffcc66';
+    cx.textAlign = 'center';
+    // Name background
+    const nameW = cx.measureText(pet.name).width + 8;
+    cx.fillStyle = 'rgba(26,18,10,0.85)';
+    cx.fillRect(p.x - nameW / 2, p.y - 35, nameW, 16);
+    cx.fillStyle = '#ffcc66';
+    cx.fillText(pet.name, p.x, p.y - 24);
+
+    // Mood emoji
+    if (pet.mood) {
+      cx.font = '11px sans-serif';
+      cx.fillText(MOOD_EM[pet.mood] || '', p.x + 20, p.y - 12);
+    }
+  });
+}
+
+// ── Find pet at screen position ──
+function petAtScreen(sx, sy) {
+  // Check in reverse order (top-most drawn last)
+  for (let i = S.pets.length - 1; i >= 0; i--) {
+    const p = worldToScreen(S.pets[i].lat, S.pets[i].lon);
+    const dx = sx - p.x, dy = sy - p.y;
+    if (dx * dx + dy * dy < 22 * 22) return i;
+  }
+  return -1;
+}
+
+// ── Main render loop ──
+function render() {
+  // Smooth zoom interpolation
+  S.zoom += (zoomTarget - S.zoom) * 0.15;
+  if (Math.abs(S.zoom - zoomTarget) < 0.005) S.zoom = zoomTarget;
+
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.fillStyle = '#d4c5a9';
+  cx.fillRect(0, 0, cv.width, cv.height);
+
+  drawTiles();
+  drawPets();
+
+  // Update HUD
+  document.getElementById('petCount').textContent = S.pets.length;
+  document.getElementById('sniffCount').textContent = S.sniffs.length;
+  document.getElementById('zoomLev').textContent = Math.round(S.zoom);
+
+  // Update userbox position if open
+  updateUserboxPosition();
+
+  requestAnimationFrame(render);
+}
+
+// ── Zoom ──
+function zoomIn() { zoomTarget = Math.min(ZOOM_MAX, zoomTarget + 0.5); }
+function zoomOut() { zoomTarget = Math.max(ZOOM_MIN, zoomTarget - 0.5); }
+
+// Scroll wheel — trackpad-friendly
+document.addEventListener('wheel', e => {
+  // Only zoom the map when the cursor is actually over the map canvas —
+  // otherwise let panels, modals, and scrollable lists scroll normally.
+  if (e.target !== cv) return;
+  const px = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
+  const delta = -px / 340;
+  const clamped = Math.max(-0.6, Math.min(0.6, delta));
+  zoomTarget = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoomTarget + clamped));
+  e.preventDefault();
+}, { passive: false });
+
+// ── Map drag ──
+let dragging = false, dragStart = { x: 0, y: 0 }, dragLat, dragLon;
+cv.addEventListener('pointerdown', e => {
+  dragging = true;
+  dragStart = { x: e.clientX, y: e.clientY };
+  dragLat = S.lat; dragLon = S.lon;
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const iz = Math.floor(S.zoom), frac = Math.pow(2, S.zoom - iz);
+  const scale = TILE_SZ * frac;
+  const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
+  const cxT = lon2tile(dragLon, iz) - dx / scale;
+  const cyT = lat2tile(dragLat, iz) - dy / scale;
+  S.lon = tile2lon(cxT, iz);
+  S.lat = tile2lat(cyT, iz);
+});
+cv.addEventListener('pointerup', e => {
+  if (!dragging) return;
+  dragging = false;
+  const dx = Math.abs(e.clientX - dragStart.x);
+  const dy = Math.abs(e.clientY - dragStart.y);
+  if (dx < 5 && dy < 5) {
+    // Click — check if we hit a pet pin
+    const petIdx = petAtScreen(e.clientX, e.clientY);
+    if (petIdx >= 0) {
+      openUserbox(petIdx, e.clientX, e.clientY);
+      return;
+    }
+    // Pin mode — drop a new pet
+    if (S.pinMode) {
+      const w = screenToWorld(e.clientX, e.clientY);
+      S._pendingPin = w;
+      openPinModal();
+    } else {
+      // Close userbox if clicking empty space
+      closeUserbox();
+    }
+  }
+});
+
+// Right-click a pin -> same actions userbox (Wag/Go/Remove), no need to left-click first.
+// Long-press is left alone on purpose: panel-drag.js already uses a 300ms hold to start
+// dragging a pin onto a side panel, so binding hold to "open menu" too would fight that
+// gesture. On touch, a plain tap already opens the userbox below.
+cv.addEventListener('contextmenu', e => {
+  const petIdx = petAtScreen(e.clientX, e.clientY);
+  if (petIdx >= 0) {
+    e.preventDefault();
+    openUserbox(petIdx, e.clientX, e.clientY);
+  }
+});
+
+// ── Pinch zoom (mobile) ──
+let pinchDist = 0, pinchZoom = 0;
+document.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    pinchDist = Math.sqrt(dx * dx + dy * dy);
+    pinchZoom = zoomTarget;
+  }
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (pinchDist > 0) {
+      const ratio = dist / pinchDist;
+      zoomTarget = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, pinchZoom + Math.log2(ratio) * 2));
+    }
+    e.preventDefault();
+  }
+}, { passive: false });
+document.addEventListener('touchend', () => { pinchDist = 0; }, { passive: true });
+
+// ── D-Pad movement ──
+const moveKeys = { up: false, down: false, left: false, right: false };
+const MOVE_SPEED = 0.0003;
+
+document.querySelectorAll('.db[data-dir]').forEach(btn => {
+  const dir = btn.dataset.dir;
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); moveKeys[dir] = true; btn.classList.add('pressed'); });
+  btn.addEventListener('pointerup', e => { moveKeys[dir] = false; btn.classList.remove('pressed'); });
+  btn.addEventListener('pointerleave', e => { moveKeys[dir] = false; btn.classList.remove('pressed'); });
+});
+
+// Keyboard arrows
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowUp' || e.key === 'w') moveKeys.up = true;
+  if (e.key === 'ArrowDown' || e.key === 's') moveKeys.down = true;
+  if (e.key === 'ArrowLeft' || e.key === 'a') moveKeys.left = true;
+  if (e.key === 'ArrowRight' || e.key === 'd') moveKeys.right = true;
+  if (e.key === '+' || e.key === '=') zoomIn();
+  if (e.key === '-') zoomOut();
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowUp' || e.key === 'w') moveKeys.up = false;
+  if (e.key === 'ArrowDown' || e.key === 's') moveKeys.down = false;
+  if (e.key === 'ArrowLeft' || e.key === 'a') moveKeys.left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd') moveKeys.right = false;
+});
+
+function updateMovement() {
+  const speed = MOVE_SPEED / Math.pow(2, S.zoom - 13);
+  if (moveKeys.up) S.lat += speed;
+  if (moveKeys.down) S.lat -= speed;
+  if (moveKeys.left) S.lon -= speed;
+  if (moveKeys.right) S.lon += speed;
+  requestAnimationFrame(updateMovement);
+}
+updateMovement();
+
+// ── PET USERBOX ──
+function openUserbox(petIdx, screenX, screenY) {
+  const pet = S.pets[petIdx];
+  if (!pet) return;
+  activeUserboxPetIndex = petIdx;
+
+  const ub = document.getElementById('petUserbox');
+  document.getElementById('ubEmoji').textContent = SPECIES_EM[pet.species] || '\u{1F43E}';
+  document.getElementById('ubName').textContent = pet.name;
+  document.getElementById('ubSpecies').textContent = (pet.breed ? pet.breed + ' \u2022 ' : '') + pet.species;
+  document.getElementById('ubBio').textContent = pet.bio || 'No bio yet...';
+  document.getElementById('ubBio').style.display = pet.bio ? 'block' : 'none';
+  document.getElementById('ubTags').innerHTML = pet.tags.map(t =>
+    '<span class="ub-tag">' + t + '</span>'
+  ).join('');
+  document.getElementById('ubMood').textContent = (MOOD_EM[pet.mood] || '') + ' ' + (pet.mood || '');
+  const trackerEl = document.getElementById('ubTracker');
+  if (pet.trackerSource === 'tractive') {
+    trackerEl.textContent = '📡 Live via Tractive';
+    trackerEl.style.display = 'block';
+  } else {
+    trackerEl.style.display = 'none';
+  }
+  document.getElementById('ubTime').textContent = 'Pinned ' + timeAgo(pet.timestamp);
+
+  // Find wag count from sniffs
+  const sniff = S.sniffs.find(s => s.petIndex === petIdx);
+  document.getElementById('ubWags').textContent = sniff ? sniff.wags + ' tail wag' + (sniff.wags !== 1 ? 's' : '') : '';
+
+  // Position near the pin but clamped to screen
+  let left = screenX + 20;
+  let top = screenY - 60;
+  if (left + 270 > window.innerWidth) left = screenX - 280;
+  if (top < 56) top = 56;
+  if (top + 300 > window.innerHeight) top = window.innerHeight - 310;
+  if (left < 0) left = 10;
+
+  ub.style.left = left + 'px';
+  ub.style.top = top + 'px';
+  ub.classList.add('show');
+}
+
+function updateUserboxPosition() {
+  if (activeUserboxPetIndex < 0) return;
+  const pet = S.pets[activeUserboxPetIndex];
+  if (!pet) { closeUserbox(); return; }
+  // Keep userbox near the pet as map moves
+  const p = worldToScreen(pet.lat, pet.lon);
+  const ub = document.getElementById('petUserbox');
+  let left = p.x + 24;
+  let top = p.y - 60;
+  if (left + 270 > window.innerWidth) left = p.x - 280;
+  if (top < 56) top = 56;
+  if (top + 300 > window.innerHeight) top = window.innerHeight - 310;
+  if (left < 0) left = 10;
+  ub.style.left = left + 'px';
+  ub.style.top = top + 'px';
+}
+
+function closeUserbox() {
+  activeUserboxPetIndex = -1;
+  const ub = document.getElementById('petUserbox');
+  ub.classList.remove('show');
+  ub.classList.remove('expanded');
+  resetHoldBar();
+}
+
+// ── Hold 3s on the userbox to reveal extra detail ──
+let ubHoldTimer = null;
+function resetHoldBar() {
+  const bar = document.getElementById('ubHoldBar');
+  if (!bar) return;
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+}
+function buildUbMoreHtml(pet) {
+  if (!pet) return '';
+  const lines = [];
+  lines.push('📅 Pinned: ' + new Date(pet.timestamp).toLocaleString());
+  if (pet.owner_name) lines.push('🧑 Owner: ' + pet.owner_name);
+  if (pet.status) lines.push('🏠 Status: ' + pet.status);
+  if (pet.stats) {
+    if (pet.stats.lifetime_distance_km) lines.push('🚶 Lifetime walks: ' + pet.stats.lifetime_distance_km.toFixed ? pet.stats.lifetime_distance_km.toFixed(1) + 'km' : pet.stats.lifetime_distance_km + 'km');
+    if (pet.stats.total_walks) lines.push('🎾 Total walks: ' + pet.stats.total_walks);
+    if (pet.stats.total_feedings) lines.push('🍖 Total feedings: ' + pet.stats.total_feedings);
+  }
+  lines.push('📍 ' + pet.lat.toFixed(5) + ', ' + (pet.lon ?? pet.lng).toFixed(5));
+  return lines.map(l => '<div>' + l + '</div>').join('');
+}
+document.getElementById('petUserbox').addEventListener('pointerdown', e => {
+  if (e.target.closest('button')) return; // let close/wag/go/remove work normally
+  const bar = document.getElementById('ubHoldBar');
+  bar.style.transition = 'width 3000ms linear';
+  bar.style.width = '100%';
+  ubHoldTimer = setTimeout(() => {
+    const ub = document.getElementById('petUserbox');
+    const pet = S.pets[activeUserboxPetIndex];
+    const willExpand = !ub.classList.contains('expanded');
+    if (willExpand) document.getElementById('ubMore').innerHTML = buildUbMoreHtml(pet);
+    ub.classList.toggle('expanded', willExpand);
+    resetHoldBar();
+  }, 3000);
+});
+// Only pointerup/pointercancel end the hold — NOT pointerleave. The box tracks its pet's
+// screen position every frame (updateUserboxPosition), so it can shift under a genuinely
+// stationary finger/cursor during zoom-smoothing; treating that as "pointer left" would
+// cancel a real hold that the user never actually released.
+['pointerup', 'pointercancel'].forEach(evt => {
+  document.getElementById('petUserbox').addEventListener(evt, () => {
+    clearTimeout(ubHoldTimer);
+    resetHoldBar();
+  });
+});
+
+function wagFromUserbox() {
+  if (activeUserboxPetIndex < 0) return;
+  const sniff = S.sniffs.find(s => s.petIndex === activeUserboxPetIndex);
+  if (sniff && !sniff.wagged) {
+    sniff.wags++;
+    sniff.wagged = true;
+    savePets();
+    document.getElementById('ubWags').textContent = sniff.wags + ' tail wag' + (sniff.wags !== 1 ? 's' : '');
+    toast('Tail wag! \u{1F43E}');
+  } else if (sniff && sniff.wagged) {
+    toast('Already wagged! \u{1F43E}');
+  }
+}
+
+function panToPetFromUserbox() {
+  if (activeUserboxPetIndex >= 0) panToPet(activeUserboxPetIndex);
+}
+
+function deletePetFromUserbox() {
+  if (activeUserboxPetIndex < 0) return;
+  const pet = S.pets[activeUserboxPetIndex];
+  if (!confirm('Remove ' + pet.name + ' from the map?')) return;
+  // Remove sniffs for this pet
+  S.sniffs = S.sniffs.filter(s => s.petIndex !== activeUserboxPetIndex);
+  // Fix sniff petIndex references
+  S.sniffs.forEach(s => { if (s.petIndex > activeUserboxPetIndex) s.petIndex--; });
+  S.pets.splice(activeUserboxPetIndex, 1);
+  savePets();
+  closeUserbox();
+  toast(pet.name + ' removed \u{1F43E}');
+}
+
+// ── Pet pin mode ──
+function togglePinPet() {
+  S.pinMode = !S.pinMode;
+  const btn = document.querySelector('.hbtn.paw');
+  if (btn) {
+    if (S.pinMode) { btn.classList.add('active'); toast('Tap the map to drop a pet pin! \u{1F43E}'); }
+    else btn.classList.remove('active');
+  }
+  cv.style.cursor = S.pinMode ? 'crosshair' : '';
+}
+
+function openPinModal() {
+  document.getElementById('pinModal').classList.add('show');
+}
+function closePinModal() {
+  document.getElementById('pinModal').classList.remove('show');
+  S._pendingPin = null;
+}
+
+function savePetPin() {
+  const name = document.getElementById('pinName').value.trim();
+  if (!name) { toast('Every pet needs a name! \u{1F43E}'); return; }
+  const pet = {
+    name,
+    species: document.getElementById('pinSpecies').value,
+    breed: document.getElementById('pinBreed').value.trim(),
+    bio: document.getElementById('pinBio').value.trim(),
+    tags: document.getElementById('pinTags').value.split(',').map(t => t.trim()).filter(Boolean),
+    mood: document.getElementById('pinMood').value,
+    lat: S._pendingPin.lat,
+    lon: S._pendingPin.lon,
+    timestamp: Date.now(),
+  };
+  S.pets.push(pet);
+  S.sniffs.push({
+    petIndex: S.pets.length - 1,
+    caption: pet.bio || pet.name + ' just joined the pack!',
+    mood: pet.mood,
+    timestamp: pet.timestamp,
+    wags: 0,
+    wagged: false,
+  });
+  savePets();
+  closePinModal();
+  // Clear form
+  document.getElementById('pinName').value = '';
+  document.getElementById('pinBreed').value = '';
+  document.getElementById('pinBio').value = '';
+  document.getElementById('pinTags').value = '';
+  S.pinMode = false;
+  const btn = document.querySelector('.hbtn.paw');
+  if (btn) btn.classList.remove('active');
+  cv.style.cursor = '';
+  toast((SPECIES_EM[pet.species] || '\u{1F43E}') + ' ' + name + ' pinned to the map!');
+}
+
+// ── Trail (feed) panel ──
+function toggleTrail() {
+  S.trailOpen = !S.trailOpen;
+  const panel = document.getElementById('trailPanel');
+  panel.classList.toggle('show', S.trailOpen);
+  if (S.trailOpen) renderTrail();
+}
+
+function renderTrail() {
+  const el = document.getElementById('trailContent');
+  if (!S.sniffs.length) {
+    el.innerHTML = '<div style="color:rgba(255,204,102,0.4);text-align:center;padding:20px;font-style:italic">The trail is empty...<br>Pin some pets to start sniffing! \u{1F43E}</div>';
+    return;
+  }
+  const sorted = [...S.sniffs].sort((a, b) => b.timestamp - a.timestamp);
+  el.innerHTML = sorted.map((s) => {
+    const pet = S.pets[s.petIndex];
+    if (!pet) return '';
+    const ago = timeAgo(s.timestamp);
+    const origIdx = S.sniffs.indexOf(s);
+    return '<div class="sniff">' +
+      '<div class="sniff-head">' +
+        '<span>' + (SPECIES_EM[pet.species] || '\u{1F43E}') + '</span>' +
+        '<span class="sniff-name">' + pet.name + '</span>' +
+        '<span class="sniff-time">' + ago + '</span>' +
+      '</div>' +
+      '<div class="sniff-caption">' + s.caption + '</div>' +
+      '<div class="sniff-mood">' + (MOOD_EM[s.mood] || '') + '</div>' +
+      '<div class="wag-row">' +
+        '<button class="wag-btn" onclick="wagSniff(' + origIdx + ')">\u{1F43E}</button>' +
+        '<span class="wag-count">' + s.wags + ' tail wag' + (s.wags !== 1 ? 's' : '') + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="bone-divider">\u2739 \u2739 \u2739</div>';
+  }).join('');
+}
+
+function wagSniff(i) {
+  if (S.sniffs[i] && !S.sniffs[i].wagged) {
+    S.sniffs[i].wags++;
+    S.sniffs[i].wagged = true;
+    savePets();
+    if (S.trailOpen) renderTrail();
+    toast('Tail wag! \u{1F43E}');
+  }
+}
+
+// ── Pack panel ──
+function togglePack() {
+  S.packOpen = !S.packOpen;
+  const panel = document.getElementById('packPanel');
+  panel.classList.toggle('show', S.packOpen);
+  if (S.packOpen) renderPack();
+}
+
+function renderPack() {
+  const el = document.getElementById('packContent');
+  if (!S.pets.length) {
+    el.innerHTML = '<div style="color:rgba(255,204,102,0.4);text-align:center;padding:20px;font-style:italic">No pack members yet...<br>Pin some pets! \u{1F43E}</div>';
+    return;
+  }
+  el.innerHTML = S.pets.map((pet, i) =>
+    '<div class="pet-card" onclick="panToPet(' + i + ')">' +
+      '<div class="name">' + (SPECIES_EM[pet.species] || '\u{1F43E}') + ' ' + pet.name + '</div>' +
+      '<div class="species">' + (pet.breed || pet.species) + '</div>' +
+      (pet.bio ? '<div class="bio">"' + pet.bio + '"</div>' : '') +
+      '<div class="tags">' + pet.tags.map(t => '<span class="tag">' + t + '</span>').join('') + '</div>' +
+      '<div class="mood">' + (MOOD_EM[pet.mood] || '') + '</div>' +
+    '</div>'
+  ).join('<div class="bone-divider">\u2739 \u2739 \u2739</div>');
+}
+
+function panToPet(i) {
+  const pet = S.pets[i];
+  if (pet) {
+    S.lat = pet.lat;
+    S.lon = pet.lon;
+    zoomTarget = Math.max(14, S.zoom);
+  }
+}
+
+function panToRandom() {
+  if (S.pets.length) panToPet(Math.floor(Math.random() * S.pets.length));
+}
+
+// ── Search ──
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchPlace();
+});
+
+async function searchPlace() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  try {
+    const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q) + '&limit=1', {
+      headers: { 'User-Agent': 'SnoutFirst/1.0' }
+    });
+    const data = await res.json();
+    if (data.length) {
+      S.lat = parseFloat(data[0].lat);
+      S.lon = parseFloat(data[0].lon);
+      zoomTarget = 13;
+      toast('Sniffed out: ' + data[0].display_name.split(',')[0] + ' \u{1F43E}');
+    } else {
+      toast('Couldn\'t sniff that out... try again? \u{1F3BE}');
+    }
+  } catch(e) { toast('Lost the scent! Network error \u{1F43E}'); }
+}
+
+// ── Toast ──
+function toast(msg) {
+  let t = document.getElementById('snoutToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'snoutToast';
+    t.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:rgba(26,18,10,0.95);border:2px solid #cc8833;color:#ffcc66;padding:8px 16px;border-radius:12px;font-family:"Bubblegum Sans",cursive;font-size:1rem;z-index:9999;transition:opacity .3s;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2200);
+}
+
+// ── Persistence ──
+function savePets() {
+  try {
+    localStorage.setItem('snoutfirst_pets', JSON.stringify(S.pets));
+    localStorage.setItem('snoutfirst_sniffs', JSON.stringify(S.sniffs));
+  } catch(e) {}
+}
+function loadPets() {
+  try {
+    const p = localStorage.getItem('snoutfirst_pets');
+    const s = localStorage.getItem('snoutfirst_sniffs');
+    if (p) S.pets = JSON.parse(p);
+    if (s) S.sniffs = JSON.parse(s);
+  } catch(e) {}
+}
+
+// ── Time helper ──
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+
+// ── Demo pets ──
+function seedDemoPets() {
+  if (S.pets.length) return;
+  const demos = [
+    { name:'Sir Barkington', species:'dog', breed:'Golden Retriever', bio:'I bark at the mailman because he\'s suspicious. No further questions.', tags:['Zoomie King','Treat Goblin'], mood:'chaos', lat:51.512, lon:-0.09 },
+    { name:'Duchess Whiskers', species:'cat', breed:'British Shorthair', bio:'I own this flat. The human just pays rent.', tags:['Lap Monster','Night Zoomie'], mood:'majestic', lat:51.507, lon:-0.076 },
+    { name:'Captain Floof', species:'dog', breed:'Samoyed', bio:'A cloud with legs and opinions.', tags:['Cloud Boy','Dramatic'], mood:'playful', lat:48.856, lon:2.352 },
+    { name:'Professor Nibbles', species:'rabbit', breed:'Holland Lop', bio:'I have chewed every cable in this house. No regrets.', tags:['Cable Destroyer','Binky Expert'], mood:'chaos', lat:52.52, lon:13.405 },
+    { name:'DJ Feathers', species:'bird', breed:'Cockatiel', bio:'My mixtape drops at 6 AM every morning. Whether you like it or not.', tags:['Early Riser','Seed Critic'], mood:'playful', lat:40.416, lon:-3.703 },
+    { name:'Lord Puddles', species:'fish', breed:'Betta', bio:'I flare at my own reflection because that fish had it coming.', tags:['Bubble Builder','Drama Fish'], mood:'majestic', lat:55.953, lon:-3.188 },
+  ];
+  demos.forEach(d => {
+    d.timestamp = Date.now() - Math.random() * 86400000;
+    S.pets.push(d);
+    S.sniffs.push({
+      petIndex: S.pets.length - 1,
+      caption: d.bio,
+      mood: d.mood,
+      timestamp: d.timestamp,
+      wags: Math.floor(Math.random() * 20),
+      wagged: false,
+    });
+  });
+  savePets();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FIREBASE INTEGRATION
+// ═══════════════════════════════════════════════════════════════
+let firebaseReady = false;
+let activeWalkTracker = null;
+let activeWalkPetId = null;
+const DEFAULT_CHANNEL = 'snoutfirst_global';
+
+async function initFirebaseIntegration() {
+  if (!initFirebase()) {
+    console.warn('Firebase not available — running in local mode');
+    return;
+  }
+  const uid = await ensureAuth();
+  if (!uid) {
+    console.warn('Auth failed — running in local mode');
+    return;
+  }
+  firebaseReady = true;
+
+  // Prompt for username if not set
+  if (!localStorage.getItem('rv_username')) {
+    const name = prompt('What\'s your name? (for pet community)', 'Anonymous Walker');
+    if (name) setUserName(name);
+  }
+
+  // Start notification listener
+  startNotificationListener();
+  onNotification((notif) => {
+    toast(notif.message);
+  });
+
+  // Load Firebase pets and merge with local
+  await syncPetsFromFirebase();
+
+  // Watch for wandering pets
+  watchForDisconnects(DEFAULT_CHANNEL, (petId, data) => {
+    const wp = new WanderingPet(petId, DEFAULT_CHANNEL, data.lat, data.lng, data);
+    wp.start();
+  });
+
+  // Listen for real-time pet updates
+  db.ref('snoutfirst/pets').on('child_changed', () => {
+    syncPetsFromFirebase();
+  });
+
+  toast('🐾 Connected to Snout First network!');
+}
+
+async function syncPetsFromFirebase() {
+  if (!firebaseReady) return;
+  try {
+    const fbPets = await getAllPets();
+    // Merge Firebase pets into local state
+    fbPets.forEach(fbPet => {
+      const exists = S.pets.findIndex(p => p._fbId === fbPet.id);
+      const localPet = {
+        _fbId: fbPet.id,
+        name: fbPet.name,
+        species: fbPet.species || 'dog',
+        breed: fbPet.breed || '',
+        bio: fbPet.bio || '',
+        tags: fbPet.personality_tags || [],
+        mood: fbPet.mood || 'happy',
+        lat: fbPet.home_lat,
+        lon: fbPet.home_lng,
+        timestamp: fbPet.created_at,
+        status: fbPet.status || 'home',
+        current_walker: fbPet.current_walker,
+        registered_by: fbPet.registered_by,
+        owner_name: fbPet.owner_name,
+        photo_base64: fbPet.photo_base64 || '',
+        stats: fbPet.stats || {}
+      };
+      if (exists >= 0) {
+        S.pets[exists] = localPet;
+      } else {
+        S.pets.push(localPet);
+        // Add sniff entry
+        S.sniffs.push({
+          petIndex: S.pets.length - 1,
+          caption: fbPet.bio || fbPet.name + ' joined the pack!',
+          mood: fbPet.mood || 'happy',
+          timestamp: fbPet.created_at,
+          wags: 0,
+          wagged: false
+        });
+      }
+    });
+  } catch (e) {
+    console.warn('Firebase sync error:', e);
+  }
+}
+
+// ── Handler functions (called by PETuserBox) ──
+async function handleTakeOut(petId) {
+  if (!firebaseReady) { toast('Not connected to network 🐾'); return; }
+  const walkId = await takeOutPet(petId, DEFAULT_CHANNEL);
+  if (walkId) {
+    activeWalkPetId = petId;
+    activeWalkTracker = new WalkTracker(petId, walkId, DEFAULT_CHANNEL);
+    activeWalkTracker.start();
+    toast('🚶 Let\'s go for a walk! 🐾');
+    closeUserbox();
+    await syncPetsFromFirebase();
+  } else {
+    toast('This pet is not available right now 🐾');
+  }
+}
+
+async function handleReturnHome(petId) {
+  if (!firebaseReady) return;
+  await returnPetHome(petId, DEFAULT_CHANNEL, activeWalkTracker);
+  const dist = activeWalkTracker ? activeWalkTracker.getDistanceKm() : 0;
+  activeWalkTracker = null;
+  activeWalkPetId = null;
+  toast(`🏠 Pet returned home! ${dist}km walked 🐾`);
+  closeUserbox();
+  await syncPetsFromFirebase();
+}
+
+async function handlePickUp(petId) {
+  if (!firebaseReady) return;
+  const walkId = await pickUpWanderingPet(petId, DEFAULT_CHANNEL);
+  if (walkId) {
+    activeWalkPetId = petId;
+    activeWalkTracker = new WalkTracker(petId, walkId, DEFAULT_CHANNEL);
+    activeWalkTracker.start();
+    toast('🎾 Picked up wandering pet! 🐾');
+    closeUserbox();
+  }
+}
+
+function handleFeedPet(petId, petName) {
+  const section = document.getElementById('pet-feed-section-' + petId);
+  if (section) {
+    if (section.innerHTML) { section.innerHTML = ''; return; }
+    renderFeedingForm(petId, petName, section);
+  }
+}
+
+function handleEditPet(petId) {
+  toast('Edit coming soon! 🐾');
+}
+
+// ── Override savePetPin to also save to Firebase ──
+const _originalSavePetPin = savePetPin;
+savePetPin = async function() {
+  const name = document.getElementById('pinName').value.trim();
+  if (!name) { toast('Every pet needs a name! 🐾'); return; }
+
+  const petData = {
+    name,
+    species: document.getElementById('pinSpecies').value,
+    breed: document.getElementById('pinBreed').value.trim(),
+    bio: document.getElementById('pinBio').value.trim(),
+    tags: document.getElementById('pinTags').value.split(',').map(t => t.trim()).filter(Boolean),
+    mood: document.getElementById('pinMood').value,
+    lat: S._pendingPin.lat,
+    lng: S._pendingPin.lon || S._pendingPin.lng,
+    contact: ''
+  };
+
+  // Check for photo input
+  const photoInput = document.getElementById('pinPhoto');
+  if (photoInput && photoInput.files && photoInput.files[0]) {
+    try {
+      petData.photo_base64 = await photoToBase64(photoInput.files[0]);
+    } catch (e) { console.warn('Photo encode failed:', e); }
+  }
+
+  if (firebaseReady) {
+    const petId = await registerPet(petData);
+    toast(`${getSpeciesEmoji(petData.species)} ${name} registered on Snout First!`);
+    await syncPetsFromFirebase();
+  } else {
+    // Local fallback (original behavior)
+    const pet = {
+      name: petData.name,
+      species: petData.species,
+      breed: petData.breed,
+      bio: petData.bio,
+      tags: petData.tags,
+      mood: petData.mood,
+      lat: petData.lat,
+      lon: petData.lng,
+      timestamp: Date.now()
+    };
+    S.pets.push(pet);
+    S.sniffs.push({
+      petIndex: S.pets.length - 1,
+      caption: pet.bio || pet.name + ' just joined the pack!',
+      mood: pet.mood,
+      timestamp: pet.timestamp,
+      wags: 0,
+      wagged: false
+    });
+    savePets();
+    toast(`${getSpeciesEmoji(pet.species)} ${name} pinned to the map!`);
+  }
+
+  closePinModal();
+  document.getElementById('pinName').value = '';
+  document.getElementById('pinBreed').value = '';
+  document.getElementById('pinBio').value = '';
+  document.getElementById('pinTags').value = '';
+  S.pinMode = false;
+  const btn = document.querySelector('.hbtn.paw');
+  if (btn) btn.classList.remove('active');
+  cv.style.cursor = '';
+};
+
+// ── Override openUserbox to use PETuserBox for Firebase pets ──
+const _originalOpenUserbox = openUserbox;
+openUserbox = function(petIdx, screenX, screenY) {
+  const pet = S.pets[petIdx];
+  if (!pet) return;
+  activeUserboxPetIndex = petIdx;
+
+  const ub = document.getElementById('petUserbox');
+
+  if (pet._fbId && firebaseReady) {
+    // Use full PETuserBox
+    const content = ub.querySelector('.ub-actions') ? ub : ub;
+    // Build a container and render
+    ub.innerHTML = `
+      <button class="ub-close" onclick="closeUserbox()">&times;</button>
+      <div id="ub-fb-content"></div>
+    `;
+    renderPetUserboxFull({
+      id: pet._fbId,
+      name: pet.name,
+      species: pet.species,
+      breed: pet.breed,
+      bio: pet.bio,
+      emoji: getSpeciesEmoji(pet.species),
+      personality_tags: pet.tags,
+      mood: pet.mood,
+      status: pet.status || 'home',
+      current_walker: pet.current_walker,
+      registered_by: pet.registered_by,
+      owner_name: pet.owner_name,
+      photo_base64: pet.photo_base64,
+      stats: pet.stats || {},
+      created_at: pet.timestamp
+    }, document.getElementById('ub-fb-content'));
+  } else {
+    // Original local userbox
+    _originalOpenUserbox(petIdx, screenX, screenY);
+    return;
+  }
+
+  // Position
+  let left = screenX + 20, top = screenY - 60;
+  if (left + 270 > window.innerWidth) left = screenX - 280;
+  if (top < 56) top = 56;
+  if (top + 300 > window.innerHeight) top = window.innerHeight - 310;
+  if (left < 0) left = 10;
+  ub.style.left = left + 'px';
+  ub.style.top = top + 'px';
+  ub.classList.add('show');
+};
+
+// ── Add photo input to pin modal ──
+function addPhotoToModal() {
+  const bioLabel = document.querySelector('#pinModal label[for="pinBio"], #pinModal label:nth-of-type(4)');
+  if (!bioLabel) return;
+  // Check if already added
+  if (document.getElementById('pinPhoto')) return;
+  const photoHtml = document.createElement('div');
+  photoHtml.innerHTML = `
+    <label style="font-family:'VT323',monospace;color:rgba(255,204,102,.7);font-size:.85rem;display:block;margin:8px 0 3px">Pet Photo (optional)</label>
+    <input id="pinPhoto" type="file" accept="image/*" style="width:100%;background:rgba(0,0,0,.4);color:#ffcc66;border:2px solid rgba(204,136,51,.4);padding:6px 8px;border-radius:8px;font-family:'VT323',monospace;font-size:.95rem">
+  `;
+  bioLabel.parentNode.insertBefore(photoHtml, bioLabel);
+}
+
+// ── Draw distance badge for active walk ──
+const _originalDrawPets = drawPets;
+drawPets = function() {
+  _originalDrawPets();
+
+  // Draw walk distance badge if walking
+  if (activeWalkTracker && activeWalkPetId) {
+    const petIdx = S.pets.findIndex(p => p._fbId === activeWalkPetId);
+    if (petIdx >= 0) {
+      const p = worldToScreen(S.pets[petIdx].lat, S.pets[petIdx].lon || S.pets[petIdx].lng);
+      if (p.x > -100 && p.x < cv.width + 100) {
+        const dist = activeWalkTracker.getDistanceKm();
+        const mins = activeWalkTracker.getDurationMins();
+        const text = `📏 ${dist}km · ⏱️${mins}m`;
+
+        cx.font = '11px "VT323", monospace';
+        const tw = cx.measureText(text).width + 10;
+        cx.fillStyle = 'rgba(26,18,10,0.9)';
+        cx.fillRect(p.x - tw / 2, p.y + 22, tw, 18);
+        cx.strokeStyle = '#88cc44';
+        cx.lineWidth = 1;
+        cx.strokeRect(p.x - tw / 2, p.y + 22, tw, 18);
+        cx.fillStyle = '#88cc44';
+        cx.textAlign = 'center';
+        cx.fillText(text, p.x, p.y + 35);
+      }
+    }
+  }
+
+  // Draw status indicators for all pets
+  S.pets.forEach((pet, i) => {
+    if (!pet._fbId) return;
+    const p = worldToScreen(pet.lat, pet.lon || pet.lng);
+    if (p.x < -40 || p.x > cv.width + 40 || p.y < -40 || p.y > cv.height + 40) return;
+
+    // Status dot
+    const colors = { home: '#88cc44', walking: '#ffcc66', wandering: '#ff6666' };
+    cx.beginPath();
+    cx.arc(p.x + 16, p.y - 16, 4, 0, Math.PI * 2);
+    cx.fillStyle = colors[pet.status] || '#88cc44';
+    cx.fill();
+    cx.strokeStyle = '#1a120a';
+    cx.lineWidth = 1.5;
+    cx.stroke();
+  });
+};
+
+// ── Init ──
+loadPets();
+seedDemoPets();
+addPhotoToModal();
+render();
+
+// Init Firebase after render starts
+setTimeout(initFirebaseIntegration, 500);
+</script>
+
+<!-- adiCtive additive panels: LOST mode, Pack/Family/Home/Vets, drag, DogLost embed -->
+<script src="js/lost-zone.js"></script>
+<script src="js/lost-pet.js"></script>
+<script src="js/lost-social.js"></script>
+<script src="js/panel-left.js"></script>
+<script src="js/panel-right.js"></script>
+<script src="js/panel-drag.js"></script>
+<script src="js/doglost-embed.js"></script>
+<script src="js/map-spots.js"></script>
+<script src="js/clown-markers.js"></script>
+</body>
+</html>

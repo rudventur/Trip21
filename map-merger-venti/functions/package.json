@@ -1,0 +1,13 @@
+{
+  "name": "snoutfirst-functions",
+  "description": "Cloud Functions for Snout First — third-party tracker relays",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-functions": "^6.0.1",
+    "firebase-admin": "^12.0.0"
+  },
+  "private": true
+}

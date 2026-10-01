@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RudVentur Social</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/RudVentur.com/embed/apple-touch-icon.png">
+<script src="https://rudventur.github.io/RudVentur.com/embed/rvView.js"></script>
+</head>
+<body>
+
+<div class="landing">
+
+  <div id="invited-banner" class="invited-banner" style="display:none"></div>
+
+  <h1 class="landing-question">what is your <span class="poison">poison</span>?</h1>
+  <p class="landing-sub">pick your entity. no signup. no walls. just you.</p>
+
+  <div class="entity-grid" id="entity-grid"></div>
+
+</div>
+
+<div class="footer">RudVentur Social v0.1 &#x2014; the universe where everyone gets a seat</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/firebase.js"></script>
+<script>
+(function() {
+  const grid = document.getElementById('entity-grid');
+
+  // Build entity cards
+  Object.entries(ENTITY_TYPES).forEach(([type, info]) => {
+    const card = document.createElement('a');
+    card.href = 'profile.html?type=' + type;
+    card.className = 'entity-card' + (type === 'cemetery' ? ' cemetery-card' : '');
+    card.innerHTML =
+      '<span class="entity-icon">' + info.icon + '</span>' +
+      '<div class="entity-label">' + info.label + '</div>' +
+      '<div class="entity-desc">' + info.desc + '</div>';
+    grid.appendChild(card);
+  });
+
+  // Check for invite
+  const params = new URLSearchParams(window.location.search);
+  const invitedBy = params.get('invited_by');
+  if (invitedBy) {
+    const banner = document.getElementById('invited-banner');
+    loadProfile(invitedBy).then(function(profile) {
+      if (profile && profile.name) {
+        banner.innerHTML = 'you were invited by <strong>' + escapeHtml(profile.name) + '</strong>';
+        banner.style.display = 'block';
+      }
+    }).catch(function() {
+      // Try cache
+      const cached = getCachedProfile(invitedBy);
+      if (cached && cached.name) {
+        banner.innerHTML = 'you were invited by <strong>' + escapeHtml(cached.name) + '</strong>';
+        banner.style.display = 'block';
+      }
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+})();
+</script>
+
+</body>
+</html>

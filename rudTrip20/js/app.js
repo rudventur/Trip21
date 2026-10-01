@@ -22,6 +22,31 @@ const state = {
   onChange() { renderRegions(); globe.paint(); }
 };
 
+// Casino hand-off: the Trip bandit (cheese-ouiji-empire/trip-bandit.html) sends
+// its reel results here as ?cont=&world=&mode=&days=&dir=&lucky=&go=1.
+// Only known keys are accepted; anything else is ignored.
+const casino = (() => {
+  const p = new URLSearchParams(location.search);
+  if (!p.has("go")) return null;
+  const pick = (bucket, raw) => {
+    const keys = (raw || "").split(",").filter((k) => k in bucket);
+    if (!keys.length) return;
+    Object.keys(bucket).forEach((k) => { bucket[k] = keys.includes(k); });
+  };
+  pick(state.continents, p.get("cont"));
+  pick(state.worlds, p.get("world"));
+  pick(state.modes, p.get("mode"));
+  const days = Number(p.get("days"));
+  if ([1, 2, 3].includes(days)) state.days = days;
+  if (p.get("dir") === "return") state.returning = true;
+  const lucky = ["place", "event", "trip"].includes(p.get("lucky")) ? p.get("lucky") : "place";
+  return { lucky };
+})();
+function syncButtons() {
+  document.querySelectorAll("[data-days]").forEach((b) => b.classList.toggle("on", Number(b.dataset.days) === state.days));
+  document.querySelectorAll("[data-dir]").forEach((b) => b.classList.toggle("on", (b.dataset.dir === "return") === state.returning));
+}
+
 const svg = document.getElementById("globe");
 const globe = createGlobe(svg, state);
 
@@ -103,6 +128,7 @@ renderContinents();
 renderRegions();
 bindToggles("#world-ticks input", state.worlds);
 bindToggles("#mode-ticks input", state.modes);
+syncButtons();
 document.querySelectorAll("[data-days]").forEach((btn) => {
   btn.addEventListener("click", () => {
     state.days = Number(btn.dataset.days);
@@ -233,4 +259,7 @@ async function bootWeather() {
       </div>`).join("")}</div>`;
   } catch { summary.textContent = "Weather offline."; }
 }
+// A casino roll starts straight away: the target search only needs the ticks,
+// not the GPS answer (which can sit on a permission prompt indefinitely).
+if (casino) roll(casino.lucky);
 locate().then(() => { bootNews(); bootWeather(); });

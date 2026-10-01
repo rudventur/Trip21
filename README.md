@@ -9,7 +9,14 @@ The three repos below were merged in **with their full git history**, each in it
 | `map-merger-venti/` | `rudventur/map-merger-venti` | ArtSpace City map game (9 vehicles, weather, lost pets, translator). Has a Firebase backend in `map-merger-venti/functions/`. |
 | `cheese-ouiji-empire/` | `rudventur/cheese-ouiji-empire` | Bandit game and the popcorn window (camera, mic, movie maker). |
 
-`index.html` at the root is the start page that links the three apps.
+`index.html` at the root is the start page that links the apps.
+
+## Trip Bandit (casino → trip)
+
+`cheese-ouiji-empire/trip-bandit.html` is a slot machine whose reels pick the trip ticks
+(continent · world · transport · days · roll kind; 🧀 = wild, 3+ 🧀 = jackpot 3-day return trip).
+"Roll it for real" opens `rudTrip20/globe.html?go=1&cont=…&world=…&mode=…&days=…&dir=…&lucky=…`,
+which applies those ticks and rolls a live target straight away (`rudTrip20/js/app.js`).
 
 ## Running locally
 

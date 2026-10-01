@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧀 TRIP BANDIT 🌍</title>
+<link rel="apple-touch-icon" href="/RudVentur.com/embed/apple-touch-icon.png">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #000; color: #00ff41;
+  font-family: 'Courier New', monospace;
+  min-height: 100vh; padding: 20px 16px 40px;
+  display: flex; flex-direction: column; align-items: center;
+  overflow-x: hidden;
+}
+nav { width: 100%; max-width: 900px; display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+nav a {
+  padding: 8px 14px; border: 2px solid #00ff41; color: #00ff41;
+  text-decoration: none; font-weight: bold; font-size: .85rem;
+  background: rgba(0,255,65,.1);
+}
+nav a:hover { background: rgba(0,255,65,.25); }
+.title {
+  font-size: clamp(1.8rem, 6vw, 3rem); font-weight: bold; text-align: center; margin-bottom: 6px;
+  animation: titleGlow 2s ease-in-out infinite;
+}
+@keyframes titleGlow {
+  0%,100% { color: #ffeb3b; text-shadow: 0 0 20px #ffeb3b; }
+  50% { color: #ff00ff; text-shadow: 0 0 30px #ff00ff, 0 0 40px #00ffff; }
+}
+.sub { color: #8f8; opacity: .8; text-align: center; margin-bottom: 22px; font-size: .9rem; }
+.machine {
+  width: 100%; max-width: 900px; padding: 18px;
+  border: 3px solid #00ff41; border-radius: 10px;
+  background: rgba(0,20,0,.9);
+  box-shadow: 0 0 30px rgba(0,255,65,.6);
+  animation: machineGlow 3s ease-in-out infinite;
+}
+@keyframes machineGlow {
+  0%,100% { border-color: #00ff41; box-shadow: 0 0 30px rgba(0,255,65,.6); }
+  33% { border-color: #ff00ff; box-shadow: 0 0 40px rgba(255,0,255,.8); }
+  66% { border-color: #00ffff; box-shadow: 0 0 40px rgba(0,255,255,.8); }
+}
+.reels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.reel { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.reel-label { font-size: .7rem; letter-spacing: .08em; color: #0ff; text-transform: uppercase; }
+.window {
+  width: 100%; height: 96px; overflow: hidden; position: relative;
+  border: 2px solid #00ff41; background: #010; border-radius: 6px;
+}
+.window::before, .window::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 22px; z-index: 1; pointer-events: none;
+}
+.window::before { top: 0; background: linear-gradient(#000, transparent); }
+.window::after { bottom: 0; background: linear-gradient(transparent, #000); }
+.strip { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+.cell {
+  height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 0 4px;
+}
+.cell .ico { font-size: 2.1rem; line-height: 1; }
+.cell .txt { font-size: .72rem; margin-top: 4px; color: #cfc; overflow-wrap: anywhere; }
+.reel.held .window { border-color: #ffeb3b; box-shadow: 0 0 14px #ffeb3b; }
+.hold {
+  font: inherit; font-size: .7rem; font-weight: bold; padding: 4px 8px; cursor: pointer;
+  border: 1px solid #00ff41; background: transparent; color: #00ff41;
+}
+.reel.held .hold { background: #ffeb3b; color: #000; border-color: #ffeb3b; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
+.btn {
+  font: inherit; font-weight: bold; font-size: 1.05rem; padding: 12px 22px; cursor: pointer;
+  border: 2px solid #00ff41; background: rgba(0,255,65,.15); color: #00ff41;
+}
+.btn:hover:not(:disabled) { background: rgba(0,255,65,.3); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.go { border-color: #ffeb3b; color: #ffeb3b; background: rgba(255,235,59,.12); }
+.result {
+  margin-top: 18px; padding: 14px; border: 1px dashed #00ff41; min-height: 64px;
+  font-size: .95rem; line-height: 1.5;
+}
+.result b { color: #ffeb3b; }
+.hint { margin-top: 12px; font-size: .75rem; opacity: .7; text-align: center; }
+#jackpot {
+  position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+  pointer-events: none; z-index: 10; overflow: hidden;
+}
+.jackpot-text {
+  font-size: clamp(2rem, 9vw, 4.5rem); font-weight: bold; color: #ffeb3b; text-align: center;
+  text-shadow: 0 0 30px #ff00ff, 0 0 60px #00ffff;
+  animation: jackpotPulse 1.2s infinite alternate;
+}
+@keyframes jackpotPulse { from { transform: scale(1); } to { transform: scale(1.12); } }
+.particle { position: absolute; top: -40px; font-size: 2rem; animation: fall linear forwards; }
+@keyframes fall { to { transform: translateY(110vh) rotate(540deg); } }
+@media (max-width: 640px) {
+  .reels { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cell .ico { font-size: 1.7rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title, .machine, .jackpot-text { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">🎰 BANDITS</a>
+  <a href="../rudTrip20/globe.html">🌍 GLOBE</a>
+  <a href="../">🏠 TRIP21</a>
+</nav>
+
+<div class="title">🧀 TRIP BANDIT 🌍</div>
+<p class="sub">Pull the handle. The reels pick where, what, how and how long — the globe rolls a real live target from it.</p>
+
+<div class="machine">
+  <div class="reels" id="reels"></div>
+  <div class="controls">
+    <button class="btn" id="spinBtn">🎰 PULL THE HANDLE</button>
+    <button class="btn go" id="goBtn" disabled>🌍 ROLL IT FOR REAL →</button>
+  </div>
+  <div class="result" id="result">No spin yet. HOLD any reel you like before pulling.</div>
+  <p class="hint">🧀 = wild: that reel keeps every option. Three or more 🧀 = JACKPOT — a 3-day Good Trip and you come back home.</p>
+</div>
+
+<div id="jackpot"></div>
+
+<script>
+// Reel faces. `key` is what the globe (rudTrip20/js/app.js) understands;
+// key null = 🧀 wild = leave that whole group ticked.
+const WILD = { ico: "🧀", txt: "WILD", key: null };
+const REELS = [
+  { id: "cont", label: "Where", faces: [
+    { ico: "🏰", txt: "Europe", key: "europe" },
+    { ico: "🐘", txt: "Africa", key: "africa" },
+    { ico: "🏯", txt: "Asia", key: "asia" },
+    { ico: "🗽", txt: "N. America", key: "north-america" },
+    { ico: "🦜", txt: "S. America", key: "south-america" },
+    { ico: "🦘", txt: "Oceania", key: "oceania" },
+    WILD
+  ]},
+  { id: "world", label: "What", faces: [
+    { ico: "🏘️", txt: "places", key: "places" },
+    { ico: "☕", txt: "businesses", key: "businesses" },
+    { ico: "🏚️", txt: "ruins", key: "ruins" },
+    { ico: "🌄", txt: "beauty", key: "beauty" },
+    { ico: "⛰️", txt: "topographic", key: "topographic" },
+    { ico: "🔭", txt: "astronomical", key: "astronomical" },
+    WILD
+  ]},
+  { id: "mode", label: "How", faces: [
+    { ico: "🚶", txt: "walk", key: "walk" },
+    { ico: "🚲", txt: "bike", key: "bike" },
+    { ico: "🚌", txt: "bus", key: "bus" },
+    { ico: "🚕", txt: "taxi", key: "taxi" },
+    { ico: "🚆", txt: "train", key: "train" },
+    { ico: "⛴️", txt: "ferry", key: "ferry" },
+    { ico: "✈️", txt: "flight", key: "flight" },
+    WILD
+  ]},
+  { id: "days", label: "How long", faces: [
+    { ico: "1️⃣", txt: "1 day", key: "1" },
+    { ico: "2️⃣", txt: "2 days", key: "2" },
+    { ico: "3️⃣", txt: "3 days", key: "3" },
+    WILD
+  ]},
+  { id: "lucky", label: "Roll", faces: [
+    { ico: "📍", txt: "Lucky Place", key: "place" },
+    { ico: "🎪", txt: "Lucky Event", key: "event" },
+    { ico: "🧭", txt: "Good Trip", key: "trip" },
+    WILD
+  ]}
+];
+const CELL = 96;
+const LOOPS = 6;
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function rand(n) {
+  const a = new Uint32Array(1);
+  crypto.getRandomValues(a);
+  return a[0] % n;
+}
+
+const reelState = REELS.map(() => ({ index: 0, held: false }));
+const root = document.getElementById("reels");
+
+REELS.forEach((reel, r) => {
+  const el = document.createElement("div");
+  el.className = "reel";
+  el.innerHTML = `<div class="reel-label">${reel.label}</div>
+    <div class="window"><div class="strip"></div></div>
+    <button class="hold" type="button">HOLD</button>`;
+  const strip = el.querySelector(".strip");
+  for (let i = 0; i < LOOPS; i++) {
+    reel.faces.forEach((f) => {
+      const c = document.createElement("div");
+      c.className = "cell";
+      c.innerHTML = `<span class="ico">${f.ico}</span><span class="txt">${f.txt}</span>`;
+      strip.appendChild(c);
+    });
+  }
+  reelState[r].index = rand(reel.faces.length);
+  strip.style.transform = `translateY(${-reelState[r].index * CELL}px)`;
+  el.querySelector(".hold").addEventListener("click", () => {
+    if (spinning) return;
+    reelState[r].held = !reelState[r].held;
+    el.classList.toggle("held", reelState[r].held);
+  });
+  reel.el = el;
+  reel.strip = strip;
+  root.appendChild(el);
+});
+
+let spinning = false;
+let lastUrl = null;
+const spinBtn = document.getElementById("spinBtn");
+const goBtn = document.getElementById("goBtn");
+const resultEl = document.getElementById("result");
+
+function spinReel(r, delay) {
+  const reel = REELS[r];
+  const n = reel.faces.length;
+  const target = rand(n);
+  reelState[r].index = target;
+  // land in the second-to-last loop so the strip always has faces below
+  const finalY = -((LOOPS - 2) * n + target) * CELL;
+  if (reduceMotion) {
+    reel.strip.style.transition = "none";
+    reel.strip.style.transform = `translateY(${-target * CELL}px)`;
+    return Promise.resolve();
+  }
+  reel.strip.style.transition = "none";
+  reel.strip.style.transform = `translateY(${-(reelState[r].prev || 0) * CELL}px)`;
+  void reel.strip.offsetHeight;
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      reel.strip.style.transition = `transform ${900 + r * 350}ms cubic-bezier(.15,.7,.25,1.02)`;
+      reel.strip.style.transform = `translateY(${finalY}px)`;
+      reel.strip.addEventListener("transitionend", function done() {
+        reel.strip.removeEventListener("transitionend", done);
+        // snap back to the first loop so the next spin starts clean
+        reel.strip.style.transition = "none";
+        reel.strip.style.transform = `translateY(${-target * CELL}px)`;
+        resolve();
+      });
+    }, delay);
+  });
+}
+
+async function pull() {
+  if (spinning) return;
+  spinning = true;
+  spinBtn.disabled = true;
+  goBtn.disabled = true;
+  resultEl.textContent = "🎰 Spinning…";
+  reelState.forEach((s) => { s.prev = s.index; });
+  await Promise.all(REELS.map((_, r) => reelState[r].held ? Promise.resolve() : spinReel(r, r * 80)));
+  spinning = false;
+  spinBtn.disabled = false;
+  settle();
+}
+
+function settle() {
+  const faces = REELS.map((reel, r) => reel.faces[reelState[r].index]);
+  const wilds = faces.filter((f) => f.key === null).length;
+  const jackpot = wilds >= 3;
+  const [cont, world, mode, days, lucky] = faces;
+
+  const params = new URLSearchParams({ go: "1" });
+  if (cont.key) params.set("cont", cont.key);
+  if (world.key) params.set("world", world.key);
+  // A single transport tick still lets the trip walk to the station.
+  if (mode.key) params.set("mode", mode.key === "walk" ? "walk" : `walk,${mode.key}`);
+  params.set("days", jackpot ? "3" : (days.key || String(1 + rand(3))));
+  params.set("lucky", jackpot ? "trip" : (lucky.key || ["place", "event", "trip"][rand(3)]));
+  if (jackpot) params.set("dir", "return");
+  lastUrl = "../rudTrip20/globe.html?" + params.toString();
+
+  const say = (f, all) => f.key === null ? `<b>🧀 ${all}</b>` : `<b>${f.ico} ${f.txt}</b>`;
+  const kind = { place: "Lucky Place", event: "Lucky Event", trip: "Good Trip" }[params.get("lucky")];
+  resultEl.innerHTML = (jackpot ? "🌊 <b>JACKPOT!!!</b> 🌊 " : "") +
+    `${kind} in ${say(cont, "anywhere")}, looking for ${say(world, "anything")}, ` +
+    `going by ${say(mode, "whatever moves")}, for <b>${params.get("days")} day${params.get("days") === "1" ? "" : "s"}</b>` +
+    (jackpot ? " — and back home again." : ".");
+  goBtn.disabled = false;
+  if (jackpot) triggerJackpot();
+}
+
+function triggerJackpot() {
+  if (reduceMotion) return;
+  const box = document.getElementById("jackpot");
+  box.innerHTML = '<div class="jackpot-text">🌊🌊 JACKPOT!!! 🧀🌍🎰 🌊🌊</div>';
+  box.style.display = "flex";
+  const things = ["🧀", "🌍", "✈️", "🚆", "🎰", "🤡", "🏰", "🧭"];
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement("div");
+    p.className = "particle";
+    p.textContent = things[rand(things.length)];
+    p.style.left = Math.random() * 100 + "vw";
+    p.style.animationDuration = 2 + Math.random() * 2 + "s";
+    p.style.animationDelay = Math.random() * 1.2 + "s";
+    box.appendChild(p);
+  }
+  setTimeout(() => { box.style.display = "none"; box.innerHTML = ""; }, 4200);
+}
+
+spinBtn.addEventListener("click", pull);
+goBtn.addEventListener("click", () => { if (lastUrl) location.href = lastUrl; });
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && e.target === document.body) { e.preventDefault(); pull(); }
+});
+</script>
+</body>
+</html>

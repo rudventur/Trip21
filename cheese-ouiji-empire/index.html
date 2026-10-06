@@ -684,9 +684,36 @@ kbd {
 .spin-log .log-win { color: #00ff41; }
 
 /* === REEL PANEL COLLAPSE === */
-.bandit-filter-header h3 { cursor: pointer; user-select: none; }
-.collapse-arrow { display: inline-block; transition: transform 0.2s; }
-.bandit-filter.collapsed .collapse-arrow { transform: rotate(-90deg); }
+.bandit-filter-header h3 { cursor: pointer; user-select: none; display: inline-flex; gap: 8px; }
+.bandit-filter-header h3 .sf-ptitle { font-size: inherit; letter-spacing: inherit; color: inherit; }
+.bandit-filter-header h3 .sf-ptoggle { margin-left: 0; font-size: 0.75rem; }
+.bandit-filter-header h3:hover .sf-ptoggle, .bandit-filter-header h3:focus-visible .sf-ptoggle { background: var(--sf-panel-accent); color: var(--sf-panel-ink); }
+.bandit-filter-header h3:focus-visible { outline: none; }
+
+/* === PANEL HIDE / SHOW (panel-toggle.js): title, reel panel, dock === */
+:root {
+  --sf-panel-accent: #00ff41; --sf-panel-text: #00ff41; --sf-panel-ink: #000;
+  --sf-panel-font: 'Courier New', monospace; --sf-panel-font-size: 0.75rem;
+  --sf-panel-title-font: 'Courier New', monospace; --sf-panel-title-size: 0.85rem; --sf-panel-title-spacing: 0;
+}
+.sf-ptoggle, .sf-ptab { font-weight: bold; text-transform: uppercase; }
+.cheese-head { position: relative; }
+.cheese-head > .sf-ptoggle { position: absolute; top: 0; right: 0; --sf-panel-accent: #ffeb3b; --sf-panel-text: #ffeb3b; }
+body.sf-hidden-header .cheese-head { display: none; }
+.sf-ptab.cheese-tab { display: none; margin: calc(-1 * var(--pad)) auto 10px; padding: 3px 14px; border-radius: 0 0 8px 8px; --sf-panel-accent: #ffeb3b; }
+body.sf-hidden-header .sf-ptab.cheese-tab { display: flex; }
+/* hidden dock: only the grip (to move it) and the toggle (to bring it back) stay */
+body.sf-hidden-dock .dock > .dock-btn:not(.dock-grip):not(.dock-hide) { display: none; }
+.dock-hide { color: #ff00ff; border-color: #ff00ff; background: rgba(255, 0, 255, 0.12); }
+.dock-hide:hover { background: rgba(255, 0, 255, 0.3); }
+.dock-hide .sf-pt-icon { margin-right: 2px; }
+.dock-hide { text-transform: uppercase; }
+@media (max-width: 600px) {
+  /* phones: the title keeps clear of the toggle, which shows just its chevron */
+  .cheese-head { padding: 0 30px; }
+  .cheese-head > .sf-ptoggle { padding: 1px 6px; }
+  .cheese-head > .sf-ptoggle .sf-pt-label { display: none; }
+}
 .bandit-filter.collapsed .reel-filters,
 .bandit-filter.collapsed .selected-fb-chips { display: none; }
 .bandit-filter.collapsed .bandit-filter-header { margin-bottom: 0; }
@@ -802,15 +829,21 @@ body.layout-fit #tab-bandits .controls { order: 6; flex: none; }
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="/RudVentur.com/embed/apple-touch-icon.png">
 <script src="https://rudventur.github.io/RudVentur.com/embed/rvView.js"></script>
+<script src="panel-toggle.js"></script>
 <script src="popcorn-window.js"></script>
 <script src="popcorn-movie.js"></script>
 </head>
 <body>
 
+<header class="cheese-head" id="cheeseHeader">
 <div class="title" data-rv-logo>
   <span class="flicker-face"></span> CHEESE BANDIT999 <span class="flicker-face"></span>
 </div>
 <div class="subtitle">🥩 FOOD BANK EMPIRE - ON STEAK 🥩</div>
+<button class="sf-ptoggle" type="button" data-panel-toggle="header"><span class="sf-pt-icon"></span><span class="sf-pt-label"></span></button>
+</header>
+<!-- brings the title back once it has been hidden -->
+<button class="sf-ptab cheese-tab" type="button" data-panel-toggle="header"><span class="sf-pt-icon"></span><span class="sf-pt-label" data-closed="CHEESE BANDIT999"></span></button>
 
 <!-- NAVIGATION -->
 <div class="nav-tabs">
@@ -825,7 +858,7 @@ body.layout-fit #tab-bandits .controls { order: 6; flex: none; }
   <!-- FOOD BANK FILTER FOR BANDITS -->
   <div class="bandit-filter">
     <div class="bandit-filter-header">
-      <h3 onclick="toggleReelPanel()" title="Show / hide">🎰 FOOD BANKS ON THE REELS <span class="collapse-arrow">▾</span></h3>
+      <h3 class="sf-phead" role="button" tabindex="0" data-panel-toggle="reels"><span class="sf-ptitle">🎰 FOOD BANKS ON THE REELS</span> <span class="sf-ptoggle"><span class="sf-pt-icon"></span><span class="sf-pt-label"></span></span></h3>
       <span class="bandit-filter-count" id="reelCount">0 food banks selected</span>
       <div class="bandit-filter-actions">
         <button class="btn-sm" onclick="selectRandomFBs(5)">🎲 RANDOM 5</button>
@@ -990,6 +1023,7 @@ body.layout-fit #tab-bandits .controls { order: 6; flex: none; }
   <button class="dock-btn" data-win="stats" onclick="toggleWin('stats')">📊<span class="dock-label"> STATS</span></button>
   <button class="dock-btn" id="dockSound" onclick="toggleSound()" title="Sound on/off">🔇</button>
   <button class="dock-btn" data-rv-popcorn title="Popcorn window — sealed camera, mic, movie maker">🍿<span class="dock-label"> POPCORN</span></button>
+  <button class="dock-btn dock-hide" type="button" data-panel-toggle="dock"><span class="sf-pt-icon"></span><span class="sf-pt-label dock-label"></span></button>
 </div>
 
 <div class="win" id="win-options" style="--wc:#00ff41">
@@ -1846,6 +1880,7 @@ function applySettings(changed) {
   document.body.classList.toggle('calm', S.calm);
   const machines = document.querySelector('.machine-container');
   document.querySelector('.bandit-filter').classList.toggle('collapsed', S.reelPanelCollapsed);
+  if (window.sfPanels) sfPanels.sync('reels');
   const hue = S.hue ? `hue-rotate(${S.hue}deg)` : '';
   [machines, document.querySelector('.title'), document.querySelector('.subtitle')].forEach(el => { el.style.filter = hue; });
   document.querySelector('.bandit-filter').style.display = S.showReelPanel ? '' : 'none';
@@ -1925,9 +1960,37 @@ function scrollToMachine(m) {
 }
 
 function toggleReelPanel() {
+  if (window.sfPanels) { sfPanels.toggle('reels'); return; }
   S.reelPanelCollapsed = !S.reelPanelCollapsed;
   saveSettings();
   applySettings('reelPanelCollapsed');
+}
+
+// ============ PANELS (panel-toggle.js): one hide / show pattern ============
+//   header  the CHEESE BANDIT999 title     hidden → tab under the top edge
+//   reels   🎰 food banks on the reels     folds up to its header (kept in the
+//                                           settings as reelPanelCollapsed)
+//   dock    the dock                        folds to its grip and toggle
+function initPanels() {
+  const P = window.sfPanels;
+  if (!P) return;
+  const reflow = () => window.dispatchEvent(new Event('resize'));   // dock room + machine fit
+  const bodyPanel = (id, el, label, side) => {
+    P.register({
+      id, el, label, side,
+      read: () => !document.body.classList.contains('sf-hidden-' + id),
+      apply: open => { document.body.classList.toggle('sf-hidden-' + id, !open); reflow(); }
+    });
+    P.set(id, P.saved(id, true), { noSave: true });
+  };
+  bodyPanel('header', '#cheeseHeader', 'the title', 'top');
+  P.register({
+    id: 'reels', el: '.bandit-filter', label: 'the food banks on the reels', side: 'top', remember: false,
+    read: () => !S.reelPanelCollapsed,
+    apply: open => { S.reelPanelCollapsed = !open; saveSettings(); applySettings('reelPanelCollapsed'); reflow(); }
+  });
+  bodyPanel('dock', '#dock', 'the dock', () => dockSide());
+  window.addEventListener('resize', () => P.sync('dock'));
 }
 
 // ============ FLOATING WINDOWS ============
@@ -2440,7 +2503,7 @@ document.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   const wins = { o: 'options', i: 'inputs', r: 'rules', s: 'stats' };
   if (k === ' ') {
-    if (tag === 'BUTTON') return;
+    if (tag === 'BUTTON' || e.target.closest('[data-panel-toggle]')) return;   // Space works the focused button / panel toggle
     e.preventDefault();
     spinAll();
   } else if (k === '1' || k === '2' || k === '3') { scrollToMachine(Number(k) - 1); pullHandle(Number(k) - 1); }
@@ -2454,6 +2517,7 @@ Object.keys(OPTION_SCHEMA).forEach(renderOptions);
 applySettings();
 setStatus(escapeHtml(S.idleText));
 initWindows();
+initPanels();
 document.querySelector('.machine-container').addEventListener('scroll', syncDots, { passive: true });
 window.addEventListener('resize', fitMachines);
 window.addEventListener('orientationchange', () => setTimeout(fitMachines, 200));

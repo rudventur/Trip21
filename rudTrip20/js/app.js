@@ -19,6 +19,7 @@ const state = {
   startName: "London",
   target: null,
   extras: [],
+  players: [],
   onChange() { renderRegions(); globe.paint(); }
 };
 
@@ -172,7 +173,15 @@ async function locate() {
   globe.paint();
 }
 document.getElementById("gps-btn").addEventListener("click", locate);
-function paintStory(kind, target, extras = []) {
+function paintStory(kind, target, extras = [], { fromRoom = false } = {}) {
+  // Group trip: tell the room about a roll made here (not one that came from the room).
+  if (!fromRoom && window.RudMultiplayer) {
+    window.RudMultiplayer.shareRoll({
+      kind, tripType: state.returning ? "return-same" : "oneway",
+      start: { lat: state.start.lat, lon: state.start.lon, name: state.startName },
+      target, extras
+    });
+  }
   state.target = { lat: target.lat, lon: target.lon, name: target.name };
   state.extras = extras;
   globe.paint();
@@ -261,4 +270,14 @@ async function bootWeather() {
 // A casino roll starts straight away: the target search only needs the ticks,
 // not the GPS answer (which can sit on a permission prompt indefinitely).
 if (casino) roll(casino.lucky);
+// Group trip (js/multiplayer.js): show other players on the globe and show
+// rolls made by others. Does nothing unless a room is joined.
+window.addEventListener("rt-mp-players", (e) => { state.players = e.detail; globe.paint(); });
+window.addEventListener("rt-mp-roll", (e) => {
+  const { roll, apply } = e.detail;
+  if (!apply) return;
+  const place = (t) => ({ loc: "", source: "shared", ...t });
+  document.getElementById("status").textContent = `${roll.name} rolled ${roll.target.name}. Showing it for the group.`;
+  paintStory(roll.extras.length ? "trip" : roll.kind, place(roll.target), roll.extras.map(place), { fromRoom: true });
+});
 locate().then(() => { bootNews(); bootWeather(); });

@@ -37,6 +37,7 @@
 
     const view = { lon: 0, lat: 18, lonSpan: 360, latSpan: 150 };
     const pins = [];
+    let players = [];
     const listeners = { click: [], moveend: [], zoomend: [] };
 
     function bounds() {
@@ -120,6 +121,25 @@
         c.setAttribute("fill", "#ff6b35"); c.setAttribute("stroke", "#111");
         svg.appendChild(c);
       }
+      // Group trip players (set by js/multiplayer.js): coloured dot plus name.
+      for (const pl of players) {
+        if (!pl.hasPosition) continue;
+        const [x, y] = xy(pl.lon, pl.lat);
+        const dot = document.createElementNS(ns, "circle");
+        dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("r", 7);
+        dot.setAttribute("fill", pl.stale ? "#888888" : pl.color);
+        dot.setAttribute("fill-opacity", pl.stale ? "0.5" : "0.95");
+        dot.setAttribute("stroke", pl.me ? "#ffffff" : "#111111");
+        dot.setAttribute("stroke-width", "2");
+        svg.appendChild(dot);
+        const tag = document.createElementNS(ns, "text");
+        tag.setAttribute("x", x + 10); tag.setAttribute("y", y + 4);
+        tag.setAttribute("fill", "#ffffff"); tag.setAttribute("font-size", "12");
+        tag.setAttribute("font-family", "system-ui, sans-serif"); tag.setAttribute("font-weight", "600");
+        tag.setAttribute("paint-order", "stroke"); tag.setAttribute("stroke", "#111111"); tag.setAttribute("stroke-width", "3");
+        tag.textContent = pl.name + (pl.me ? " (you)" : "") + (pl.stale ? " · away" : "");
+        svg.appendChild(tag);
+      }
       const read = host.parentElement && host.parentElement.querySelector(".grid-readout");
       if (read) read.textContent = "cell " + lonStep + "° × " + latStep + "° · " + view.lonSpan.toFixed(1) + "° across";
       paintMini();
@@ -201,6 +221,7 @@
       paint,
       bounds,
       clearPins() { pins.length = 0; paint(); },
+      setPlayers(list) { players = Array.isArray(list) ? list : []; paint(); },
       pin(lat, lon) { pins.push({ lat, lon }); paint(); },
       focus(lat, lon) {
         view.lat = lat; view.lon = lon;

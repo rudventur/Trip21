@@ -1286,6 +1286,7 @@
       L.marker([sLat, sLon]).addTo(resultMap).bindPopup("Start");
       L.marker([target.lat, target.lon]).addTo(resultMap).bindPopup(escapeHtml(target.name));
       resultMap.fitBounds(L.latLngBounds([[sLat, sLon], [target.lat, target.lon]]), { padding: [30, 30] });
+      if (window.RudMultiplayer) window.RudMultiplayer.attachLeafletMap(resultMap);
       L.polyline([[sLat, sLon], [target.lat, target.lon]], {
         color: "#ff6b35", weight: 3, dashArray: "8,8"
       }).addTo(resultMap);
@@ -1293,6 +1294,10 @@
       renderRoutes(target, sLat, sLon, tripType, startText);
 
       lastRenderState = { tripType, sLat, sLon, startText, target };
+      // Group trip: tell the room about this roll (not when it came from the room).
+      if (!window.__rtMpApplying && window.RudMultiplayer) {
+        window.RudMultiplayer.shareRoll({ kind: luckyMode, tripType, start: { lat: sLat, lon: sLon, name: startText || "" }, target });
+      }
       document.getElementById("rerollRow").style.display = "flex";
       document.getElementById("shareBtn").style.display = ""; // share is supported for every single-target trip type
 
@@ -1337,11 +1342,15 @@
       L.marker([sLat, sLon]).addTo(resultMap).bindPopup("Start");
       targets.forEach((t, i) => L.marker([t.lat, t.lon]).addTo(resultMap).bindPopup(`Stop ${i + 1}: ${escapeHtml(t.name)}`));
       resultMap.fitBounds(L.latLngBounds(latlngs), { padding: [30, 30] });
+      if (window.RudMultiplayer) window.RudMultiplayer.attachLeafletMap(resultMap);
       L.polyline(latlngs, { color: "#ff6b35", weight: 3, dashArray: "8,8" }).addTo(resultMap);
 
       renderLoopRoutes(targets, sLat, sLon, startText);
 
       lastRenderState = { tripType: "loop", sLat, sLon, startText, targets };
+      if (!window.__rtMpApplying && window.RudMultiplayer) {
+        window.RudMultiplayer.shareRoll({ kind: luckyMode, tripType: "loop", start: { lat: sLat, lon: sLon, name: startText || "" }, target: targets[0], extras: targets.slice(1) });
+      }
       document.getElementById("rerollRow").style.display = "flex";
       document.getElementById("shareBtn").style.display = "none"; // not supported for loops yet
 
@@ -1591,6 +1600,33 @@
       setStatus("Showing a shared result — hit \"I'm Feeling Lucky\" for a fresh one.");
       renderTarget(target, { sLat, sLon, tripType, startText });
     })();
+
+    // ========== GROUP TRIP (js/multiplayer.js) ==========
+    // Players in the same room show up as coloured dots on the map and the
+    // globe, and a roll made by someone else is shown here too. Nothing
+    // below runs unless a room is joined.
+    window.addEventListener("rt-mp-players", e => {
+      if (grid.setPlayers) grid.setPlayers(e.detail);
+    });
+    window.addEventListener("rt-mp-roll", e => {
+      const { roll, apply } = e.detail;
+      if (!apply) return;
+      const sLat = startLatLon ? startLatLon.lat : (roll.start && roll.start.lat) || roll.target.lat;
+      const sLon = startLatLon ? startLatLon.lon : (roll.start && roll.start.lon) || roll.target.lon;
+      const startText = (document.getElementById("start").value || (roll.start && roll.start.name) || "").slice(0, 120);
+      const place = t => ({ desc: "", loc: "", source: "osm", ...t });
+      window.__rtMpApplying = true; // so showing it does not send it back to the room
+      try {
+        setStatus(`${roll.name} rolled ${roll.target.name}. Showing it for the group.`);
+        if (roll.extras.length) {
+          renderLoopResult([roll.target, ...roll.extras].map(place), { sLat, sLon, startText });
+        } else {
+          renderTarget(place(roll.target), { sLat, sLon, tripType: ["oneway", "return-same", "return-other"].includes(roll.tripType) ? roll.tripType : "oneway", startText });
+        }
+      } finally {
+        window.__rtMpApplying = false;
+      }
+    });
   </script>
 
   <script>
@@ -2429,6 +2465,7 @@
 </script>
 
 <script src="js/panels.js"></script>
+<script type="module" src="js/multiplayer.js"></script>
 </body>
 </html>
 

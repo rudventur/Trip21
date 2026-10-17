@@ -75,6 +75,31 @@ export function createGlobe(svg, state) {
       c.setAttribute("class", "pin");
       overlay.appendChild(c);
     }
+    // Group trip players (set by js/multiplayer.js): coloured dot plus name.
+    for (const pl of state.players || []) {
+      if (!pl.hasPosition) continue;
+      const [x, y] = lonLatToXy(pl.lon, pl.lat, W, H);
+      const dot = document.createElementNS(ns, "circle");
+      dot.setAttribute("cx", x);
+      dot.setAttribute("cy", y);
+      dot.setAttribute("r", 6);
+      dot.setAttribute("fill", pl.stale ? "#888888" : pl.color);
+      dot.setAttribute("fill-opacity", pl.stale ? "0.5" : "0.95");
+      dot.setAttribute("stroke", pl.me ? "#ffffff" : "#111111");
+      dot.setAttribute("stroke-width", "2");
+      overlay.appendChild(dot);
+      const tag = document.createElementNS(ns, "text");
+      tag.setAttribute("x", x + 9);
+      tag.setAttribute("y", y + 4);
+      tag.setAttribute("fill", "#ffffff");
+      tag.setAttribute("font-size", "12");
+      tag.setAttribute("font-weight", "600");
+      tag.setAttribute("paint-order", "stroke");
+      tag.setAttribute("stroke", "#111111");
+      tag.setAttribute("stroke-width", "3");
+      tag.textContent = pl.name + (pl.me ? " (you)" : "") + (pl.stale ? " · away" : "");
+      overlay.appendChild(tag);
+    }
   }
 
   paint();

@@ -17,6 +17,14 @@
 //                                               search or the dashboard change
 //    sfDash.LISTS                             — the list definitions the right
 //                                               panel draws; add one here
+//
+//  Search modes: the top box searches whatever the open tab is about.
+//    pets (default) · vets (js/vets.js) · food banks (js/foodbanks.js)
+//    sfDash.registerSearchMode(id, spec)      — add a mode; id is the right
+//                                               panel tab it belongs to
+//    sfDash.searchMode() / sfDash.setTabMode(tab) / sfDash.onModeChange(fn)
+//    sfDash.submitSearch()                    — what Enter and the search
+//                                               button do in the current mode
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
@@ -101,7 +109,10 @@ function matches(pet) {
   return t.every(w => hay.includes(w));
 }
 function setQuery(text) {
-  q = String(text == null ? '' : text).slice(0, 80);
+  const t = String(text == null ? '' : text).slice(0, 80);
+  // In the vets or food bank mode the pet search waits until pets come back.
+  if (curMode !== 'pets') { modeText.pets = t; return; }
+  q = t;
   const input = document.getElementById('searchInput');
   if (input && input.value !== q) input.value = q;
   changed();
@@ -166,13 +177,123 @@ function updateBar() {
   document.querySelectorAll('[data-count="all"]').forEach(el => { el.textContent = allPets().length; });
   const count = document.getElementById('sfSearchCount');
   const clear = document.getElementById('sfSearchClear');
-  const total = allPets().length;
-  if (clear) clear.style.visibility = q ? 'visible' : 'hidden';
+  const text = curMode === 'pets' ? q : (modeText[curMode] || '');
+  if (clear) clear.style.visibility = text ? 'visible' : 'hidden';
   if (!count) return;
-  if (!q) { count.textContent = ''; count.style.display = 'none'; return; }
-  const n = allPets().filter(matches).length;
-  count.textContent = n + ' of ' + total + ' pet' + (total === 1 ? '' : 's');
-  count.style.display = 'inline';
+  let label = '';
+  if (curMode === 'pets') {
+    const total = allPets().length;
+    if (q) label = allPets().filter(matches).length + ' of ' + total + ' pet' + (total === 1 ? '' : 's');
+  } else if (text) {
+    const m = modes[curMode];
+    let c = null;
+    try { c = m && typeof m.count === 'function' ? m.count() : null; } catch (e) { c = null; }
+    if (c && c.total) label = c.shown + ' of ' + c.total + ' ' + (c.total === 1 ? c.one : c.many);
+  }
+  count.textContent = label;
+  count.style.display = label ? 'inline' : 'none';
+}
+
+// ── Search modes: the top box follows the open tab ──
+// Each mode remembers its own text, so a pet name typed earlier never filters
+// the vets, and coming back to the pets brings the pet search back.
+const modes = {
+  pets: { id: 'pets', icon: '🐾', label: 'pets', placeholder: 'sniff sniff',
+    aria: 'Search pets by name, breed or tag. Press Enter to go to the first match, or to look up a place.',
+    button: '🗺 place', buttonTitle: 'Look up this text as a place and move the map there' }
+};
+const modeText = {};
+const modeListeners = [];
+let tabMode = 'pets';      // mode of the open tab in the right panel
+let curMode = 'pets';      // mode actually in use (see effectiveMode)
+function registerSearchMode(id, spec) {
+  id = String(id || '');
+  if (!id || id === 'pets' || !spec) return;
+  modes[id] = Object.assign({ id, icon: '🔎', label: id, placeholder: 'sniff sniff ' + id + '…',
+    aria: 'Search ' + id, button: '🔎 search', buttonTitle: 'Search' }, spec, { id });
+  applyMode();
+}
+// The tab the right panel shows decides the mode. On a phone only one sheet
+// is visible: while the dashboard sheet is open, the box searches pets.
+function setTabMode(tab) {
+  tabMode = modes[tab] ? tab : 'pets';
+  applyMode();
+}
+function effectiveMode() {
+  if (tabMode !== 'pets' && isPhone() && isPanelOpen('left')) return 'pets';
+  return modes[tabMode] ? tabMode : 'pets';
+}
+function applyMode(force) {
+  const next = effectiveMode();
+  const input = document.getElementById('searchInput');
+  if (next !== curMode || force) {
+    const prev = curMode;
+    if (next !== prev) {
+      // Leaving a mode: keep its text. Leaving pets also stops filtering the pets.
+      if (prev === 'pets') { modeText.pets = q; if (q) { q = ''; changed(); } }
+      curMode = next;
+      if (next === 'pets') { const back = modeText.pets || ''; if (back !== q) { q = back; changed(); } }
+    }
+    const m = modes[curMode];
+    const text = curMode === 'pets' ? q : (modeText[curMode] || '');
+    if (input) {
+      input.placeholder = m.placeholder;
+      input.setAttribute('aria-label', m.aria);
+      if (input.value !== text) input.value = text;
+    }
+    const bar = document.getElementById('sfBar');
+    if (bar) bar.dataset.searchMode = curMode;
+    const chip = document.getElementById('sfModeChip');
+    if (chip) {
+      chip.dataset.mode = curMode;
+      chip.classList.toggle('other', curMode !== 'pets');
+      chip.title = curMode === 'pets' ? 'The search box is searching pets'
+        : 'The search box is searching ' + m.label + ' (the ' + m.label + ' tab is open). Tap to show the list.';
+      const lab = document.getElementById('sfModeLabel');
+      if (lab) lab.textContent = m.icon + ' ' + m.label;
+    }
+    const btn = document.getElementById('sfSearchGo');
+    if (btn) { btn.textContent = m.button; btn.title = m.buttonTitle; }
+    if (next !== prev || force) {
+      if (curMode !== 'pets' && typeof m.filter === 'function') { try { m.filter(text); } catch (e) {} }
+      modeListeners.forEach(fn => { try { fn(curMode, prev); } catch (e) { console.warn('search mode listener', e); } });
+    }
+  }
+  updateBar();
+}
+function onModeChange(fn) { if (typeof fn === 'function') modeListeners.push(fn); }
+// Typing in the box.
+function typed(text) {
+  if (curMode === 'pets') { setQuery(text); return; }
+  modeText[curMode] = String(text == null ? '' : text).slice(0, 80);
+  const m = modes[curMode];
+  if (m && typeof m.filter === 'function') { try { m.filter(modeText[curMode]); } catch (e) {} }
+  updateBar();
+}
+// Enter or the search button. Returns false in pet mode so the page keeps its
+// pet search and place behaviour.
+function submitSearch() {
+  if (curMode === 'pets') return false;
+  const m = modes[curMode];
+  const text = (modeText[curMode] || '').trim();
+  if (m && typeof m.submit === 'function') {
+    // The results show in the right panel: open it (the bottom sheet on phones).
+    if (!isPanelOpen('right')) setPanelOpen('right', true);
+    try { m.submit(text); } catch (e) { console.warn('search submit', e); }
+  }
+  return true;
+}
+// Lets a mode empty the box after its search (e.g. a place was found).
+function setModeText(id, text) {
+  if (!modes[id] || id === 'pets') return;
+  modeText[id] = String(text == null ? '' : text).slice(0, 80);
+  if (curMode === id) {
+    const input = document.getElementById('searchInput');
+    if (input && input.value !== modeText[id]) input.value = modeText[id];
+    const m = modes[id];
+    if (m && typeof m.filter === 'function') { try { m.filter(modeText[id]); } catch (e) {} }
+  }
+  updateBar();
 }
 
 // Enter in the search box: focus the first matching pet on the map. Returns
@@ -225,6 +346,7 @@ function layout() {
   // How much of each side the panels cover, so floating buttons sit beside them.
   rootStyle.setProperty('--lp-edge', (!phone && lp) ? Math.round(lp.getBoundingClientRect().right) + 'px' : '0px');
   rootStyle.setProperty('--rp-edge', (!phone && rp) ? Math.round(window.innerWidth - rp.getBoundingClientRect().left) + 'px' : '0px');
+  if (effectiveMode() !== curMode) applyMode();
 }
 
 // Header buttons inside both panels (the phone sheet tabs).
@@ -255,9 +377,22 @@ document.addEventListener('transitionend', e => {
 // ── Search box wiring ──
 function bindSearch() {
   const input = document.getElementById('searchInput');
-  if (input) input.addEventListener('input', () => setQuery(input.value));
+  if (input) input.addEventListener('input', () => typed(input.value));
   const clear = document.getElementById('sfSearchClear');
-  if (clear) clear.addEventListener('click', () => { setQuery(''); if (input) input.focus(); });
+  if (clear) clear.addEventListener('click', () => { typed(''); if (input) { input.value = ''; input.focus(); } });
+  const chipX = document.getElementById('sfModeExit');
+  if (chipX) chipX.addEventListener('click', () => {
+    // Back to the pet search: show the pet lists in the right panel.
+    if (typeof rpSwitchTab === 'function') rpSwitchTab('all'); else setTabMode('all');
+    if (input) input.focus();
+  });
+  const chip = document.getElementById('sfModeChip');
+  if (chip) chip.addEventListener('click', e => {
+    if (e.target.closest('#sfModeExit')) return;
+    // On a phone the Vets and Food lists live in the bottom sheet: open it.
+    if (curMode !== 'pets') setPanelOpen('right', true);
+  });
+  applyMode(true);
   updateBar();
 }
 bindSearch();
@@ -274,7 +409,12 @@ window.sfDash = {
   takeOff, putBack, pin, unpin,
   query: () => q, setQuery, matches, dashboardPets, focusFirstMatch,
   onChange, refresh: changed,
-  isPhone, setPanelOpen, isPanelOpen, layout
+  isPhone, setPanelOpen, isPanelOpen, layout,
+  // search modes (the top box follows the open tab)
+  registerSearchMode, setTabMode, onModeChange, submitSearch, setModeText,
+  searchMode: () => curMode, tabMode: () => tabMode,
+  modeText: id => (id || curMode) === 'pets' ? q : (modeText[id || curMode] || ''),
+  searchModes: () => Object.keys(modes)
 };
 
 })();

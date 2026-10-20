@@ -16,8 +16,14 @@
 //      both at once; no automatic retries; a growing wait after errors and
 //      a longer one after "too many requests" (429)
 //
-//  Hooks: window.sfVets (used by js/panel-right.js). Draws by wrapping
-//  drawPets(), the same way js/map-spots.js and js/clown-markers.js do.
+//  Hooks: window.sfVets (used by js/panel-right.js and js/foodbanks.js).
+//  Draws by wrapping drawPets(), the same way js/map-spots.js and
+//  js/clown-markers.js do.
+//
+//  Top search box: while the Vets tab is open the "sniff sniff" box searches
+//  vets (registered with sfDash.registerSearchMode). Typing filters the vets
+//  already found; Enter looks the text up as a place or postcode with
+//  Nominatim (geocodePlace in snout-first.html) and searches vets there.
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
@@ -56,6 +62,7 @@ const st = {
   goHold: null,          // map centred on a vet by Go: don't search again for that
   userLoc: null,
   requests: 0,           // how many requests this page has sent (for the tests)
+  filter: '',            // text typed in the top search box (Vets mode)
 };
 let active = false;
 let mountEl = null;
@@ -304,12 +311,12 @@ function errorText(e) {
 
 // ── Searching ──
 // reason: 'open' | 'button' | 'retry' | 'me' | 'view'
-async function search(reason, area) {
+async function search(reason, area, placeLabel) {
   area = area || viewArea();
   if (!area) return;
   const user = reason !== 'view';
   const originNear = st.userLoc && distKm(st.userLoc, area.at) < 0.2;
-  const origin = { lat: area.at.lat, lon: area.at.lon, label: originNear ? 'your location' : 'the map view' };
+  const origin = { lat: area.at.lat, lon: area.at.lon, label: placeLabel || (originNear ? 'your location' : 'the map view') };
   const cached = cacheGet(area.key);
   if (cached) {
     Object.assign(st, { status: 'ready', vets: cached, areaKey: area.key, radius: area.radius, origin, error: '' });
@@ -365,6 +372,45 @@ async function nearMe() {
     draw();
   }
 }
+// Enter in the top search box (Vets mode): look the place or postcode up,
+// move the map there and search for vets around it.
+async function placeSearch(text) {
+  const q = clean(text, 120);
+  if (!q) { st.goHold = null; return search('button'); }
+  if (typeof geocodePlace !== 'function') { st.note = 'The place search did not load. Reload the page to try again.'; draw(); return; }
+  st.note = 'Looking up "' + q + '"…'; draw();
+  let place = null;
+  try { place = await geocodePlace(q); }
+  catch (e) { st.note = 'Could not reach the place search (Nominatim). Check your connection and try again.'; draw(); return; }
+  if (!place) { st.note = 'No place called "' + q + '" was found. Try a town, street or postcode.'; draw(); return; }
+  st.note = ''; st.goHold = null; st.selected = '';
+  if (typeof S !== 'undefined') { S.lat = place.lat; S.lon = place.lon; }
+  if (typeof zoomTarget !== 'undefined') zoomTarget = 14;
+  document.body.classList.remove('sf-vet-focus');
+  // The text was a place, not a filter: empty the box so every vet shows.
+  st.filter = '';
+  if (window.sfDash && sfDash.setModeText) sfDash.setModeText('vets', '');
+  const area = viewArea();
+  lastView = area ? area.key : ''; stillSince = Date.now();
+  await search('place', area, place.name);
+}
+
+// Typing in the top search box (Vets mode) filters the vets already found.
+function filterTerms() { return st.filter.toLowerCase().split(/\s+/).filter(Boolean); }
+function vetMatches(v) {
+  const t = filterTerms();
+  if (!t.length) return true;
+  const hay = [v.name, v.address, v.hours, v.website].concat(v.phones || [], v.emergency ? ['emergency', '24 hour'] : [])
+    .map(x => String(x == null ? '' : x).toLowerCase()).join('\n');
+  return t.every(w => hay.includes(w));
+}
+function setFilter(text) {
+  const t = clean(text, 80);
+  if (t === st.filter) return;
+  st.filter = t;
+  draw();
+}
+
 function goTo(v) {
   if (typeof S === 'undefined' || !v) return;
   S.lat = v.lat; S.lon = v.lon;
@@ -536,8 +582,14 @@ function draw() {
   } else if (st.status === 'ready') {
     status.textContent = `Found ${st.vets.length} vet${st.vets.length === 1 ? '' : 's'} within ${km} kilometres of ${st.origin ? st.origin.label : 'the map view'}, nearest first`;
     root.appendChild(status);
+    const shown = sortedVets().filter(vetMatches);
+    if (st.filter) {
+      root.appendChild(el('div', 'rp-vet-status sf-vet-filter' + (shown.length ? '' : ' empty'),
+        shown.length ? `Showing ${shown.length} of ${st.vets.length} matching "${st.filter}". Press Enter to look "${st.filter}" up as a place instead.`
+          : `No vets here match "${st.filter}". Press Enter to look it up as a place or postcode.`));
+    }
     const list = el('div', 'sf-vet-list');
-    sortedVets().forEach(v => list.appendChild(card(v)));
+    shown.forEach(v => list.appendChild(card(v)));
     root.appendChild(list);
   } else {
     status.textContent = 'Move the map to where you need a vet, then search this map view.';
@@ -595,6 +647,18 @@ if (typeof drawPets === 'function') {
   drawPets = function () { drawMarkers(); _vetsOrigDrawPets.apply(this, arguments); };
 }
 
+// ── The top search box in Vets mode ──
+if (window.sfDash && sfDash.registerSearchMode) {
+  sfDash.registerSearchMode('vets', {
+    icon: '🏥', label: 'vets', placeholder: 'sniff sniff vets…',
+    aria: 'Search vets. Typing filters the vets found; press Enter to look up vets near a place or postcode.',
+    button: '🔎 vets', buttonTitle: 'Look up vets near this place or postcode',
+    filter: setFilter,
+    submit: placeSearch,
+    count: () => ({ shown: st.vets.filter(vetMatches).length, total: st.vets.length, one: 'vet', many: 'vets' }),
+  });
+}
+
 // ── Public ──
 window.sfVets = {
   // panel-right gives us an empty element inside the Vets tab
@@ -612,6 +676,10 @@ window.sfVets = {
     if (active && !was) { lastView = viewSig(); stillSince = Date.now(); search('open'); }
   },
   state: st,
+  setFilter, placeSearch,
+  // shared with js/foodbanks.js (same gentle Overpass rules and tag readers)
+  ENDPOINTS: ENDPOINTS.slice(), QUERY_TIMEOUT_S, CLIENT_TIMEOUT_MS,
+  formatAddress, parsePhones, parseHours, isOpenAt, telHref, webHref, distKm, fmtDist, clean,
   // for the tests
   _parseHours: parseHours, _isOpenAt: isOpenAt, _telHref: telHref, _webHref: webHref, _viewArea: viewArea,
 };

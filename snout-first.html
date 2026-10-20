@@ -32,6 +32,11 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1;touch-action:none}
 .csearch-clear{visibility:hidden;background:none;border:1px solid rgba(204,136,51,0.5);color:#cc8833;border-radius:8px;cursor:pointer;font-size:.75rem;padding:0 5px;line-height:1.3}
 .csearch-clear:hover{background:#cc8833;color:#1a120a}
 .csearch .hbtn{padding:2px 7px;font-size:.85rem;border-width:1px}
+/* search mode chip: what the top box is searching (follows the open tab) */
+.csearch-mode{display:inline-flex;align-items:center;gap:3px;flex-shrink:0;border:1px solid rgba(136,204,68,0.45);color:#88cc44;border-radius:8px;padding:0 5px;font-size:.8rem;line-height:1.35;white-space:nowrap;font-family:'VT323',monospace}
+.csearch-mode.other{background:#ffcc66;border-color:#ffcc66;color:#1a120a;cursor:pointer}
+.csearch-mode button{display:none;background:none;border:none;color:inherit;cursor:pointer;font-size:.75rem;padding:0 0 0 2px;line-height:1}
+.csearch-mode.other button{display:inline}
 .hud .net-note{border:1px solid rgba(255,204,102,0.35);border-radius:10px;padding:1px 8px;margin:0;font-size:.85rem;white-space:nowrap;flex-shrink:0;background:rgba(0,0,0,0.25)}
 
 /* ── STATS ── */
@@ -246,10 +251,11 @@ body.sf-hidden-bar .sf-ptab.sf-ptab-top{display:flex}
   <div class="hsep"></div>
   <div class="csearch" role="search">
     <span class="csearch-icon" aria-hidden="true">&#128067;</span>
+    <span class="csearch-mode" id="sfModeChip" data-mode="pets" aria-live="polite" title="The search box is searching pets"><span id="sfModeLabel">&#128062; pets</span><button id="sfModeExit" type="button" title="Back to the pet search" aria-label="Back to the pet search">&#10005;</button></span>
     <input class="cinput" id="searchInput" type="text" placeholder="sniff sniff" autocomplete="off" spellcheck="false" aria-label="Search pets by name, breed or tag. Press Enter to go to the first match, or to look up a place.">
     <span class="csearch-count" id="sfSearchCount" aria-live="polite"></span>
     <button class="csearch-clear" id="sfSearchClear" type="button" title="Clear the search">&#10005;</button>
-    <button class="hbtn" type="button" onclick="searchPlace()" title="Look up this text as a place and move the map there">&#128506; place</button>
+    <button class="hbtn" id="sfSearchGo" type="button" onclick="sfSearchButton()" title="Look up this text as a place and move the map there">&#128506; place</button>
   </div>
   <div class="hsep"></div>
   <div class="hbtns">
@@ -665,7 +671,7 @@ function sfuDeleteSpot(id) {
 
 function sfuClearData() {
   if (!confirm('Reset all local Snout First data on this device? This clears pets pinned only in this browser, your notes, saved spots, and settings. Pets already saved to the network are not affected.')) return;
-  ['snoutfirst_pets','snoutfirst_sniffs','snoutfirst_pets_v2','sf_notes','sf_home','sf_lost_pets','sf_vets_custom','sf_food_custom','sf_walk_spots','sf_owner_signature','rv_username','rv_local_uid','sf_walks','sf_pet_photos','sf_dashboard','sf_panels'].forEach(k => localStorage.removeItem(k));
+  ['snoutfirst_pets','snoutfirst_sniffs','snoutfirst_pets_v2','sf_notes','sf_home','sf_lost_pets','sf_vets_custom','sf_food_custom','sf_walk_spots','sf_owner_signature','rv_username','rv_local_uid','sf_walks','sf_pet_photos','sf_dashboard','sf_food_saved_v1','sf_panels'].forEach(k => localStorage.removeItem(k));
   if (typeof toast === 'function') toast('\u{1F5D1}\u{FE0F} Local data cleared! Reloading...');
   setTimeout(() => location.reload(), 900);
 }
@@ -687,7 +693,7 @@ function sfuClearData() {
 
 <!-- MAP CREDITS (credit required by the OpenStreetMap tile rules). The sharing
      note ("This device only" / "Shared map on") now sits in the dashboard bar. -->
-<div class="map-credit">Map &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> &middot; search: Nominatim &middot; vets: Overpass</div>
+<div class="map-credit">Map &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> &middot; search: Nominatim &middot; vets: Overpass &middot; food banks: <a href="https://www.givefood.org.uk/" target="_blank" rel="noopener">Give Food</a>, <a href="https://www.bluecross.org.uk/help-and-support/our-pet-food-banks" target="_blank" rel="noopener">Blue Cross</a>, Overpass</div>
 
 <!-- HONEST EMPTY STATE (no invented pets) -->
 <div class="empty-hint" id="emptyHint">No pets on the map yet.<br>Tap &#128062; PIN PET, then tap the map to add yours.</div>
@@ -1457,27 +1463,49 @@ function panToRandom() {
 }
 
 // ── Search ("sniff sniff") ──
-// Typing filters the pets in both panels (js/dashboard.js). Enter goes to the
-// first matching pet; if no pet matches, the text is looked up as a place.
+// The box follows the open tab (js/dashboard.js): with the Vets tab open it
+// searches vets, with the Food tab open it searches food banks. Otherwise
+// typing filters the pets in both panels, Enter goes to the first matching
+// pet, and if no pet matches the text is looked up as a place.
 document.getElementById('searchInput').addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
+  if (window.sfDash && sfDash.submitSearch()) return;
   if (window.sfDash && sfDash.focusFirstMatch()) return;
   searchPlace();
 });
+function sfSearchButton() {
+  if (window.sfDash && sfDash.submitSearch()) return;
+  searchPlace();
+}
+
+// Look a place or postcode up with Nominatim (OpenStreetMap). Returns
+// { lat, lon, name, label }, or null when nothing matches; throws when the
+// service can't be reached. Used by the pet search, the vets and food banks.
+async function geocodePlace(text) {
+  const q = String(text == null ? '' : text).trim().slice(0, 120);
+  if (!q) return null;
+  const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q) + '&limit=1', {
+    headers: { 'User-Agent': 'SnoutFirst/1.0' }
+  });
+  if (!res.ok) throw new Error('place search ' + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data) || !data.length) return null;
+  const lat = parseFloat(data[0].lat), lon = parseFloat(data[0].lon);
+  if (!isFinite(lat) || !isFinite(lon)) return null;
+  const label = String(data[0].display_name || q);
+  return { lat, lon, name: label.split(',')[0].trim() || q, label };
+}
 
 async function searchPlace() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
   try {
-    const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q) + '&limit=1', {
-      headers: { 'User-Agent': 'SnoutFirst/1.0' }
-    });
-    const data = await res.json();
-    if (data.length) {
-      S.lat = parseFloat(data[0].lat);
-      S.lon = parseFloat(data[0].lon);
+    const place = await geocodePlace(q);
+    if (place) {
+      S.lat = place.lat;
+      S.lon = place.lon;
       zoomTarget = 13;
-      toast('Sniffed out: ' + data[0].display_name.split(',')[0] + ' \u{1F43E}');
+      toast('Sniffed out: ' + place.name + ' \u{1F43E}');
     } else {
       toast('Couldn\'t sniff that out... try again? \u{1F3BE}');
     }
@@ -1927,6 +1955,7 @@ setTimeout(initFirebaseIntegration, 500);
 <script src="js/panel-left.js"></script>
 <script src="js/panel-right.js"></script>
 <script src="js/vets.js"></script>
+<script src="js/foodbanks.js"></script>
 <script src="js/panel-drag.js"></script>
 <script src="js/snout-first-service.js"></script>
 <script src="js/doglost-embed.js"></script>

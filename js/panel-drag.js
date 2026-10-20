@@ -12,12 +12,10 @@ const servicePins = [];
 
 window.addServicePin = function(type, name, lat, lon) {
   if (typeof S === 'undefined') return;
-  // Explicit coords (e.g. a real vet locator result) win; otherwise scatter near map centre
-  servicePins.push({
-    type, name,
-    lat: (typeof lat === 'number') ? lat : S.lat + (Math.random() - 0.5) * 0.005,
-    lon: (typeof lon === 'number') ? lon : S.lon + (Math.random() - 0.5) * 0.005,
-  });
+  // Only real positions: a pin without coordinates is never placed at a
+  // made-up spot (the old Food "+ map" button scattered pins at random).
+  if (typeof lat !== 'number' || typeof lon !== 'number' || !isFinite(lat) || !isFinite(lon)) return;
+  servicePins.push({ type, name, lat, lon });
   if (typeof toast === 'function') toast(`📍 ${name} pinned on map!`);
 };
 

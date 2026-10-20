@@ -4,7 +4,11 @@
 //    All pets · My pets · Lost · Out walking · Off dashboard · Friends and
 //    family (coming later, empty)
 //  Places and help: Home · Vets (real vets from OpenStreetMap, see
-//    js/vets.js) · Food (LOCKED)
+//    js/vets.js) · Food (real food banks from Give Food, the Blue Cross pet
+//    food bank map and OpenStreetMap, see js/foodbanks.js)
+//  The top "sniff sniff" box follows the open tab: it searches vets while
+//  Vets is open, food banks while Food is open, and pets otherwise
+//  (sfDash.setTabMode in js/dashboard.js).
 //  Each pet entry can be put back on / pinned to the top of the dashboard.
 //  The list definitions live in js/dashboard.js (sfDash.LISTS).
 // ═══════════════════════════════════════════════════════════════
@@ -247,6 +251,27 @@ function injectRightPanel() {
     }
     .sf-vet-credit a { color: rgba(255,204,102,0.7); }
 
+    /* Real food banks (js/foodbanks.js) — same card look as the vets */
+    .sf-food.pet { border-color: rgba(136,204,68,0.55); box-shadow: 0 0 0 1px rgba(136,204,68,0.18) inset; }
+    .sf-food .rp-ltag.sf-food-pet { color: #88cc44; border-color: rgba(136,204,68,0.6); }
+    .sf-food .rp-ltag.sf-food-pet.maybe { color: rgba(255,204,102,0.7); border-color: rgba(255,204,102,0.3); background: rgba(255,204,102,0.05); }
+    .sf-food-what, .sf-food-aka, .sf-food-notes, .sf-food-from {
+      color: rgba(255,204,102,0.6); font-size: .66rem; margin-top: 3px; overflow-wrap: anywhere; line-height: 1.25;
+    }
+    .sf-food-why { color: #88cc44; font-size: .68rem; margin-top: 3px; overflow-wrap: anywhere; line-height: 1.25; }
+    .sf-food-from a { color: rgba(255,204,102,0.8); }
+    .sf-food-group { margin: 6px 2px 4px; }
+    .sf-food-sources { margin: 2px 0 4px; }
+    .sf-food-src-line { color: rgba(255,204,102,0.55); font-size: .64rem; line-height: 1.35; }
+    .sf-food-src-line.err { color: rgba(255,120,120,0.85); }
+    .sf-food-src-line.loading { color: #ffcc66; }
+    .sf-food-fallback { color: #ffcc66; font-size: .68rem; border: 1px dashed rgba(255,204,102,0.35); border-radius: 7px; margin: 3px 0; }
+    .sf-food-saved { color: #ffcc66; font-size: .72rem; border: 1px solid rgba(255,204,102,0.5); border-radius: 7px; background: rgba(255,204,102,0.06); margin: 3px 0; }
+    .sf-food-status.err { color: rgba(255,120,120,0.9); }
+    .sf-food-rspca { font-size: .62rem; margin-top: 6px; }
+    .sf-food-rspca a, .sf-food-credit a { color: rgba(255,204,102,0.75); }
+    .sf-food-tip { opacity: .8; }
+
     /* Doglost embed */
     .rp-doglost-frame {
       width: 100%; height: 220px; border: none;
@@ -282,6 +307,9 @@ function injectRightPanel() {
       .sf-vet-addr { font-size: .8rem; }
       .sf-vet-phone a { display: inline-block; padding: 3px 0; }
       .sf-vet-credit { font-size: .72rem; }
+      .sf-food-what, .sf-food-aka, .sf-food-notes, .sf-food-from, .sf-food-why { font-size: .8rem; }
+      .sf-food-src-line, .sf-food-fallback, .sf-food-rspca { font-size: .78rem; }
+      .sf-food-saved { font-size: .85rem; }
     }
   </style>
 
@@ -322,19 +350,27 @@ function injectRightPanel() {
 const EMERGENCY_UK = [
   { label:'🚨 Vets Now (24 hour emergency vets)', url:'https://www.vets-now.com/find-an-emergency-vet/' },
   { label:'☠️ Animal PoisonLine', url:'https://www.animalpoisonline.co.uk' },
-  { label:'🐾 RSPCA (24 hour cruelty line)', url:'https://www.rspca.org.uk/utilities/contactus' },
+  { label:'🐾 Royal Society for the Prevention of Cruelty to Animals (24 hour cruelty line)', url:'https://www.rspca.org.uk/utilities/contactus' },
 ];
 
-// FOOD TAB — LOCKED AS HOLY GRAIL
-const FOOD_DATA = [
-  { n:'East London Pet Food Bank', a:'Whitechapel Community Hub', url:'https://www.eastlondonpetfoodbank.org', tags:['dogs','cats','free'], pinned:true },
-  { n:'RSPCA Foodshare', a:'rspca.org.uk', url:'https://www.rspca.org.uk', tags:['all pets','national'], pinned:false },
-  { n:'Hackney Animal Aid', a:'Hackney, E8', url:'https://maps.google.com/?q=hackney+animal+aid', tags:['emergency','local'], pinned:false },
+// (The Food tab used to start with three hand-written entries, "East London
+// Pet Food Bank", "Royal Society for the Prevention of Cruelty to Animals
+// Foodshare" and "Hackney Animal Aid", and a "+ map" button that dropped a pin
+// at a random spot. The owner asked for them to go: the food banks now come
+// live from real sources, see js/foodbanks.js.)
+
+// Places to look further, written out in full (no made-up food banks here).
+const FOOD_MORE = [
+  { label:'Royal Society for the Prevention of Cruelty to Animals pet food bank map', url:'https://www.rspca.org.uk/adviceandwelfare/costofliving/foodbank' },
+  { label:'Blue Cross pet food banks', url:'https://www.bluecross.org.uk/help-and-support/our-pet-food-banks' },
+  { label:'Dogs Trust dog food banks', url:'https://www.dogstrust.org.uk/get-help/dog-food-bank' },
+  { label:'Trussell food bank finder', url:'https://www.trussell.org/get-help/find-a-food-bank' },
+  { label:'Give Food: every food bank and what it needs', url:'https://www.givefood.org.uk/needs/' },
 ];
 
 const CHARITIES_UK = [
-  { label:'RSPCA', url:'https://www.rspca.org.uk' },
-  { label:'PDSA', url:'https://www.pdsa.org.uk' },
+  { label:'Royal Society for the Prevention of Cruelty to Animals', url:'https://www.rspca.org.uk' },
+  { label:"People's Dispensary for Sick Animals", url:'https://www.pdsa.org.uk' },
   { label:'Blue Cross', url:'https://www.bluecross.org.uk' },
   { label:'Dogs Trust', url:'https://www.dogstrust.org.uk' },
   { label:"Cats Protection", url:'https://www.cats.org.uk' },
@@ -377,6 +413,8 @@ function rpSwitchTab(tab) {
   tab = RP_OLD_TABS[tab] || tab;
   rpActiveTab = tab;
   if (window.sfVets) sfVets.setActive(tab === 'vets');
+  if (window.sfFood) sfFood.setActive(tab === 'food');
+  if (window.sfDash && sfDash.setTabMode) sfDash.setTabMode(tab);
   document.querySelectorAll('.rp-tab').forEach(t =>
     t.classList.toggle('active', t.dataset.rptab === tab)
   );
@@ -393,7 +431,11 @@ function rpRender() {
       if (window.sfVets) sfVets.mount(document.getElementById('rpVetsLive'));
       else document.getElementById('rpVetsLive').textContent = 'The vet search did not load. Reload the page to try again.';
       break;
-    case 'food':    el.innerHTML = rpRenderFood();    break;
+    case 'food':
+      el.innerHTML = rpRenderFood();
+      if (window.sfFood) sfFood.mount(document.getElementById('rpFoodLive'));
+      else document.getElementById('rpFoodLive').textContent = 'The food bank search did not load. Reload the page to try again.';
+      break;
     default:        el.innerHTML = rpRenderList(rpActiveTab);
   }
   rpUpdateCounts();
@@ -625,32 +667,36 @@ window.rpAddVet = function() {
   if (typeof toast === 'function') toast('🏥 Vet added!');
 };
 
-// ── Food (LOCKED AS HOLY GRAIL) ──
+// ── Food ──
+// Real food banks near the map (js/foodbanks.js fills #rpFoodLive using text
+// only). Food banks the user typed in themselves stay on this device.
 function rpRenderFood() {
-  const cards = FOOD_DATA.map((f, i) =>
-    `<div class="rp-link">
-      <div class="rp-lname">
-        <a href="${safeUrl(f.url)}" target="_blank" rel="noopener">🥣 ${escHtml(f.n)}</a>
-        <span class="rp-pin-btn" onclick="rpPinOnMap('food',${i},${escJsArg(f.n)})">
-          ${f.pinned ? '📍' : '+ map'}
-        </span>
-      </div>
-      <div class="rp-laddr">${escHtml(f.a)}</div>
-      <div class="rp-ltags">
-        ${f.tags.map(t => `<span class="rp-ltag">${escHtml(t)}</span>`).join('')}
-      </div>
-    </div>`
+  let custom = [];
+  try { custom = JSON.parse(localStorage.getItem(FOOD_KEY) || '[]'); } catch (e) { custom = []; }
+  if (!Array.isArray(custom)) custom = [];
+  const cards = custom.filter(f => f && f.n).map(f => {
+    const href = safeUrl(f.url);
+    const name = `🥣 ${escHtml(f.n)}`;
+    return `<div class="rp-link">
+      <div class="rp-lname">${href !== '#' ? `<a href="${href}" target="_blank" rel="noopener">${name}</a>` : `<span>${name}</span>`}</div>
+      ${f.a ? `<div class="rp-laddr">${escHtml(f.a)}</div>` : ''}
+    </div>`;
+  }).join('');
+  const more = FOOD_MORE.map(c =>
+    `<a class="rp-charity-btn" href="${safeUrl(c.url)}" target="_blank" rel="noopener">${escHtml(c.label)} ↗</a>`
   ).join('');
-
-  const ukCharities = CHARITIES_UK.map(c =>
-    `<a class="rp-charity-btn" href="${c.url}" target="_blank" rel="noopener">${c.label}</a>`
-  ).join('');
-
-  return cards +
-    `<button class="rp-add-btn" onclick="rpAddFood()">+ add food bank</button>` +
+  return `<div class="rp-vet-search">
+      <div class="rp-charity-label">🥣 FOOD BANKS NEAR THE MAP (live)</div>
+      <div id="rpFoodLive"></div>
+    </div>` +
+    `<div class="rp-charity-section" style="margin-top:2px">
+      <div class="rp-charity-label">⭐ SAVED BY YOU (THIS DEVICE ONLY)</div>
+      ${cards}
+      <button class="rp-add-btn" onclick="rpAddFood()">+ add food bank</button>
+    </div>` +
     `<div class="rp-charity-section">
-      <div class="rp-charity-label">🇬🇧 UK RESOURCES</div>
-      <div class="rp-charity-grid">${ukCharities}</div>
+      <div class="rp-charity-label">🔎 LOOK FURTHER (OPENS THEIR OWN SITES)</div>
+      <div class="rp-charity-grid">${more}</div>
     </div>`;
 }
 
@@ -658,22 +704,14 @@ window.rpAddFood = function() {
   const n = prompt('Food bank name:');
   if (!n) return;
   const a = prompt('Address:') || '';
-  const u = prompt('URL (https://...):') || '#';
-  const custom = JSON.parse(localStorage.getItem(FOOD_KEY) || '[]');
+  const u = prompt('Website (https://...), or leave empty:') || '';
+  let custom = [];
+  try { custom = JSON.parse(localStorage.getItem(FOOD_KEY) || '[]'); } catch (e) { custom = []; }
+  if (!Array.isArray(custom)) custom = [];
   custom.push({ n, a, url: u, tags: ['custom'], pinned: false });
   localStorage.setItem(FOOD_KEY, JSON.stringify(custom));
   rpRender();
   if (typeof toast === 'function') toast('🥣 Food bank added!');
-};
-
-// ── Pin on map ──
-window.rpPinOnMap = function(type, idx, name) {
-  // Tells panel-drag / lost-zone to place a map marker
-  if (typeof addServicePin === 'function') {
-    addServicePin(type, name);
-  } else {
-    if (typeof toast === 'function') toast(`📍 ${name} pinned to map (placeholder)`);
-  }
 };
 
 // ── Drag a list entry onto the dashboard to put it back ──

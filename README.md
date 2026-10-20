@@ -25,6 +25,13 @@ which applies those ticks and rolls a live target straight away (`rudTrip20/js/a
 Firebase project `trip21-25f36` (`firebase-config.js`, `database.rules.json`). See `MULTIPLAYER.md`
 for how to publish the rules and test it.
 
+## useRbox: searches and inventory in its left section
+
+The Feeling Lucky page (`rudTrip20/index.html`) loads the shared RUDVENTUR profile box
+(`useRbox.js` from RudVentur.com, the R circle top right). In Trip21, `rudTrip20/js/trip21-userbox.js`
+moves the trip searches and the inventory into the left section of that box, next to a group trip
+shortcut. A bar on the page opens it. If the box cannot load, the page stays as it was.
+
 ## Running locally
 
 Static site — serve the repo root over http (not `file://`):

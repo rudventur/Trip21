@@ -1,0 +1,28 @@
+/* scaling.css — Trip21: the Feeling Lucky page fills the screen and scales.
+   Loaded after the page's own styles, so these rules win.
+   - text grows a little on big screens and shrinks a little on phones
+   - the three columns (inventory, main, dashboard) use the full width
+   - the search map keeps the shape of the world (2 : 1) instead of a fixed height
+   - below 800 pixels wide everything stacks in one column (unchanged order) */
+html { font-size: clamp(14px, 0.45vw + 9px, 19px); }
+body { padding: clamp(8px, 1.2vw, 24px) clamp(6px, 1.2vw, 28px) 60px; }
+.trip-shell { max-width: min(2200px, 100%); gap: clamp(8px, 1vw, 20px); padding: clamp(4px, 0.6vw, 12px); }
+.container { max-width: none; }
+#inventory { width: clamp(220px, 15vw, 340px); flex: 0 0 clamp(220px, 15vw, 340px); }
+#dashPanel { width: clamp(220px, 17vw, 380px); flex: 0 0 clamp(220px, 17vw, 380px); }
+h1 { font-size: clamp(1.4rem, 1.2vw + 0.9rem, 2.4rem); }
+/* the search map: as wide as the column, half as tall (the world is twice as wide as it is tall) */
+#mainMap { height: auto; aspect-ratio: 2 / 1; max-height: 68vh; min-height: 220px; }
+.map-row { align-items: stretch; }
+#miniMap { height: auto; min-height: 120px; width: clamp(140px, 11vw, 240px); flex: 0 0 clamp(140px, 11vw, 240px); }
+#resultMap { height: clamp(220px, 42vh, 620px); }
+@media (max-width: 800px) {
+  .trip-shell { flex-direction: column; align-items: stretch; }
+  #inventory, #dashPanel { width: 100%; flex: none; }
+  #mainMap { max-height: 55vh; }
+}
+@media (max-width: 640px) {
+  #miniMap { width: 100%; flex: none; height: 110px; }
+}
+/* keep the dashboard clear of the useRbox R circle (top right) on wide screens */
+@media (min-width: 801px) { #dashPanel { margin-top: 64px; } }

@@ -9,10 +9,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/globe-scaling.css" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <script src="https://rudventur.github.io/RudVentur.com/embed/rvView.js"></script>
+  <script src="../trip21-view.js" defer></script>
 </head>
 <body>
   <header class="app-header sf-phead" id="globeHeader">
-    <div class="mark">rud<span>Trip20</span></div>
+    <div class="mark" data-rv-logo title="Click for full screen and view options">rud<span>Trip20</span></div>
     <div class="mode">globe-itinerary · live roll</div>
     <button class="sf-ptoggle" type="button" data-panel-toggle="globe-header"><span class="sf-pt-icon"></span><span class="sf-pt-label"></span></button>
   </header>
@@ -49,6 +53,7 @@
         <button class="sf-ptoggle" type="button" data-panel-toggle="globe-side"><span class="sf-pt-icon"></span><span class="sf-pt-label"></span></button>
       </div>
       <div class="sf-pbody side-body">
+      <div data-rt-mp-slot></div>
       <div>
         <div class="group-title">Continents</div>
         <div class="ticks" id="continent-ticks"></div>

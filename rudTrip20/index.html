@@ -1355,8 +1355,8 @@
       document.getElementById("shareBtn").style.display = "none"; // not supported for loops yet
 
       document.getElementById("result").classList.add("visible");
-      rememberRoll(target);
-      attachWiki(target);
+      rememberRoll(primary);
+      attachWiki(primary);
       document.getElementById("result").scrollIntoView({ behavior: "smooth" });
       requestAnimationFrame(() => requestAnimationFrame(() => resultMap.invalidateSize()));
     }

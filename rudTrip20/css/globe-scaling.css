@@ -1,0 +1,23 @@
+/* globe-scaling.css — Trip21: the globe page fills the screen.
+   - the page is exactly one screen tall; the globe takes all the height that is left
+   - the trip controls column is sized with clamp() so the globe gets the width
+   - text scales with the screen
+   - below 820 pixels wide: globe on top (about half the screen), controls under it,
+     and the group trip panel sits in the controls instead of floating over the globe */
+html { font-size: clamp(14px, 0.45vw + 9px, 19px); }
+body { min-height: 100vh; min-height: 100dvh; }
+@media (min-width: 821px) {
+  html, body { height: 100%; }
+  body { height: 100vh; height: 100dvh; overflow: hidden; }
+  .stage { min-height: 0; grid-template-columns: minmax(0, 1fr) clamp(300px, 26vw, 520px); }
+  .globe-wrap { min-height: 0; height: 100%; }
+  #globe, .globe-wrap svg { min-height: 0; height: 100%; position: absolute; inset: 0; }
+  .side { overflow-y: auto; min-height: 0; }
+}
+@media (max-width: 820px) {
+  .globe-wrap { min-height: 0; height: clamp(200px, 56vw, 52vh); }
+  #globe, .globe-wrap svg { min-height: 0; height: 100%; }
+}
+/* the group trip panel when it sits inside the trip controls (phones) */
+#rt-mp.rt-docked { position: static; max-width: none; margin: 0 0 0.6rem; }
+#rt-mp.rt-docked .rt-box { max-height: none; margin-bottom: 0.4rem; }

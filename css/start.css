@@ -1,0 +1,29 @@
+/* start.css — the Trip21 start page fills the screen at any size. */
+:root { --bg:#0b0d10; --fg:#e8e6df; --dim:#8a8f98; --card:#14181d; --line:#262c34; --accent:#ffb000; }
+* { box-sizing:border-box; }
+html { font-size: clamp(14px, 0.5vw + 9px, 22px); }
+body { margin:0; background:var(--bg); color:var(--fg); font:1rem/1.5 ui-monospace, Menlo, Consolas, monospace; }
+main {
+  min-height:100vh; min-height:100dvh; width:min(100%, 2000px); margin:0 auto;
+  padding:clamp(16px, 4vh, 64px) clamp(14px, 4vw, 80px);
+  display:flex; flex-direction:column; gap:clamp(16px, 3vh, 40px);
+}
+h1 { margin:0; font-size:clamp(2rem, 3vw + 1rem, 5rem); line-height:1.05; color:var(--accent); display:inline-block; }
+p.sub { margin:0.3rem 0 0; color:var(--dim); font-size:clamp(1rem, 0.6vw + 0.8rem, 1.5rem); }
+.grid {
+  flex:1; display:grid; gap:clamp(12px, 1.6vw, 32px);
+  grid-template-columns:repeat(auto-fit, minmax(min(100%, clamp(240px, 22vw, 440px)), 1fr));
+  grid-auto-rows:minmax(clamp(120px, 24vh, 340px), 1fr);
+}
+a.card {
+  display:flex; flex-direction:column; justify-content:flex-end; gap:0.5rem;
+  padding:clamp(16px, 2vw, 40px); background:var(--card); border:1px solid var(--line); border-radius:clamp(10px, 1vw, 18px);
+  color:inherit; text-decoration:none; transition:border-color .15s, transform .15s;
+}
+a.card:hover, a.card:focus-visible { border-color:var(--accent); outline:none; transform:translateY(-2px); }
+a.card .icon { font-size:clamp(2.2rem, 3vw + 1rem, 5.5rem); line-height:1; margin-bottom:auto; }
+a.card h2 { margin:0; font-size:clamp(1.15rem, 0.9vw + 0.8rem, 2rem); }
+a.card p { margin:0; color:var(--dim); font-size:clamp(0.9rem, 0.4vw + 0.75rem, 1.25rem); }
+footer { color:var(--dim); font-size:0.85rem; }
+footer a { color:var(--accent); }
+@media (max-width: 520px) { .grid { grid-auto-rows:auto; } a.card .icon { margin-bottom:0.4rem; } }

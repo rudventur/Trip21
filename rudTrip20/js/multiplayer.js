@@ -573,6 +573,18 @@ function buildUi() {
   root.append(box, pill);
   document.body.appendChild(root);
   mp.ui = { root, box, pill, status: "", bad: false, nameInput: null, codeInput: null };
+  // On narrow screens a page can give the panel a place in its layout
+  // (an element marked data-rt-mp-slot), so it never floats over the globe.
+  const slot = document.querySelector("[data-rt-mp-slot]");
+  const narrow = window.matchMedia ? window.matchMedia("(max-width: 820px)") : null;
+  const place = () => {
+    const dock = !!(slot && narrow && narrow.matches);
+    if (dock && root.parentNode !== slot) slot.appendChild(root);
+    if (!dock && root.parentNode !== document.body) document.body.appendChild(root);
+    root.classList.toggle("rt-docked", dock);
+  };
+  place();
+  if (narrow && narrow.addEventListener) narrow.addEventListener("change", place);
 }
 function setBusy(on, message) {
   mp.busy = on;

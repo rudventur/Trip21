@@ -392,6 +392,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="/RudVentur.com/embed/apple-touch-icon.png">
 <script src="https://rudventur.github.io/RudVentur.com/embed/rvView.js"></script>
+  <link rel="stylesheet" href="css/scaling.css" />
+  <script src="../trip21-view.js" defer></script>
 </head>
 <body>
   <div class="trip-shell">
@@ -400,7 +402,7 @@
   <div class="container">
     <header id="tripHeader">
       <div class="sf-phead trip-head">
-        <h1>RudVentur – Feeling Lucky</h1>
+        <h1 data-rv-logo title="Click for full screen and view options">RudVentur – Feeling Lucky</h1>
         <button class="sf-ptoggle" type="button" data-panel-toggle="header"><span class="sf-pt-icon"></span><span class="sf-pt-label"></span></button>
       </div>
       <p class="subtitle">Lucky Place • Lucky Event • Good Trip — real random search, no suggestions</p>
@@ -2466,6 +2468,10 @@
 
 <script src="js/panels.js"></script>
 <script type="module" src="js/multiplayer.js"></script>
+<!-- The shared RUDVENTUR profile box (useRbox). In Trip21 its left section also holds the
+     searches and the inventory (js/trip21-userbox.js). -->
+<script src="https://rudventur.github.io/RudVentur.com/embed/useRbox.js" defer></script>
+<script src="js/trip21-userbox.js" defer></script>
 </body>
 </html>
 

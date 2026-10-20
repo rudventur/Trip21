@@ -137,33 +137,6 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1;touch-action:none}
 .view-submenu.open{display:block}
 .view-submenu button{font-size:.88rem;color:rgba(255,204,102,0.8)}
 
-/* ── ACCOUNT HUB (ported from windows13's useRbox v2) ── */
-#sfuHub{position:fixed;top:calc(var(--bar-h) + 10px);right:10px;z-index:1600;font-family:'VT323',monospace}
-#sfuCircle{width:44px;height:44px;border-radius:50%;background:rgba(26,18,10,0.95);border:3px solid #cc8833;display:flex;align-items:center;justify-content:center;font-size:1.4rem;cursor:pointer;box-shadow:0 0 16px rgba(204,136,51,0.35);transition:all .2s}
-#sfuCircle:hover{transform:scale(1.08) rotate(-4deg);box-shadow:0 0 26px rgba(204,136,51,0.55)}
-#sfuPanel{position:absolute;top:52px;right:0;width:280px;max-height:80vh;overflow-y:auto;background:rgba(26,18,10,0.98);border:3px solid #cc8833;border-radius:14px;padding:14px;box-shadow:0 4px 28px rgba(0,0,0,0.5)}
-#sfuPanel.sfu-hidden{display:none}
-#sfuPanel>.sf-phead{margin:-14px -14px 10px;border-radius:11px 11px 0 0}
-#sfuClock{text-align:center;font-size:1.1rem;color:#ffcc66;font-weight:bold;margin-bottom:10px;padding:6px;background:rgba(255,204,102,0.05);border:1px solid rgba(255,204,102,0.25);border-radius:8px}
-#sfuPanel label{display:block;margin:8px 0 3px;font-size:.75rem;color:rgba(255,204,102,0.6);text-transform:uppercase;letter-spacing:1px}
-#sfuPanel input[type=text],#sfuPanel textarea{width:100%;background:rgba(0,0,0,0.4);color:#ffcc66;border:1.5px solid rgba(204,136,51,0.4);padding:6px 8px;font-family:'VT323',monospace;font-size:.9rem;border-radius:8px;outline:none}
-#sfuPanel input[type=text]:focus,#sfuPanel textarea:focus{border-color:#ffcc66}
-#sfuPanel textarea{resize:vertical;min-height:44px}
-.sfu-row{display:flex;gap:6px;align-items:center}
-.sfu-row input{flex:1}
-.sfu-section{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(204,136,51,0.25)}
-#sfuSpotList{max-height:120px;overflow-y:auto;margin-top:6px}
-.sfu-spot-item{display:flex;justify-content:space-between;align-items:center;padding:5px 7px;margin-bottom:5px;background:rgba(0,0,0,0.3);border:1px solid rgba(204,136,51,0.25);border-radius:8px;font-size:.8rem}
-.sfu-spot-item:hover{border-color:#cc8833}
-.sfu-spot-name{display:block;font-family:'Bubblegum Sans',cursive;color:#ffcc66}
-.sfu-spot-coords{display:block;font-size:.65rem;color:rgba(255,204,102,0.4)}
-.sfu-spot-del{background:none;border:none;color:#ff6666;cursor:pointer;font-size:.85rem;padding:0 4px}
-.sfu-social-section{margin-top:12px;padding-top:10px;border-top:1px dashed rgba(204,136,51,0.25)}
-.sfu-social-title{text-align:center;color:#ffcc66;font-size:.85rem;margin-bottom:8px;font-family:'Bubblegum Sans',cursive}
-.sfu-social-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:6px}
-.sfu-social-icon{width:38px;height:38px;background:rgba(0,0,0,0.3);border:2px solid #cc8833;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;text-decoration:none;color:#ffcc66;transition:all .15s}
-.sfu-social-icon:hover{background:#cc8833;color:#1a120a;transform:scale(1.1)}
-
 /* ── BONE DIVIDER ── */
 .bone-divider{text-align:center;color:rgba(204,136,51,0.2);font-size:.7rem;margin:8px 0;letter-spacing:4px}
 
@@ -484,198 +457,9 @@ document.addEventListener('keydown', e => {
 });
 </script>
 
-<!-- ═══ ACCOUNT HUB (ported from windows13's useRbox v2, restyled to Snout First) ═══ -->
-<div id="sfuHub">
-  <div id="sfuCircle" role="button" tabindex="0" data-panel-toggle="account" title="useRbox">&#128062;</div>
-  <div id="sfuPanel" class="sfu-hidden">
-    <div class="sf-phead">
-      <span class="sf-ptitle">&#128062; useRbox</span>
-      <button class="sf-ptoggle" type="button" data-panel-toggle="account"><span class="sf-pt-icon">&#9650;</span><span class="sf-pt-label">hide</span></button>
-    </div>
-    <div id="sfuClock">--:--:--</div>
-
-    <label>&#128100; Display Name</label>
-    <div class="sfu-row">
-      <input type="text" id="sfuUsername" placeholder="Anonymous Walker">
-      <button class="hbtn paw" onclick="sfuSaveName()">&#128190;</button>
-    </div>
-
-    <label>&#128221; Your Motto</label>
-    <textarea id="sfuSignature" placeholder="e.g. Professional treat negotiator, full-time good boy manager..."></textarea>
-
-    <div class="sfu-section">
-      <label>&#128205; Saved Walk Spots</label>
-      <div class="sfu-row">
-        <input type="text" id="sfuSpotLat" placeholder="lat (or refresh)">
-        <input type="text" id="sfuSpotLon" placeholder="lon">
-        <button class="hbtn" id="sfuGpsBtn" onclick="sfuRefreshGPS()" title="Use my real GPS location">&#128205;</button>
-      </div>
-      <div class="sfu-row" style="margin-top:5px">
-        <input type="text" id="sfuSpotName" placeholder="Spot name...">
-        <button class="hbtn paw" onclick="sfuSaveSpot()">&#128190; Save</button>
-      </div>
-      <div id="sfuSpotList"></div>
-    </div>
-
-    <div class="sfu-social-section">
-      <div class="sfu-social-title">&#128062; Part of RudVentur</div>
-      <div class="sfu-social-grid">
-        <a href="https://github.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="GitHub">&#128187;</a>
-        <a href="https://discord.gg/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Discord">&#128172;</a>
-        <a href="https://twitter.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Twitter/X">&#120143;</a>
-        <a href="https://instagram.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Instagram">&#128247;</a>
-        <a href="https://youtube.com/@rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="YouTube">&#9654;&#65039;</a>
-        <a href="https://ko-fi.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Ko-fi">&#9749;</a>
-        <a href="https://tiktok.com/@rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="TikTok">&#127925;</a>
-        <a href="https://t.me/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Telegram">&#9992;&#65039;</a>
-        <a href="mailto:RudVentur@gmail.com" class="sfu-social-icon" title="Email">&#128231;</a>
-      </div>
-    </div>
-
-    <button class="hbtn red" style="width:100%;margin-top:10px" onclick="sfuClearData()">&#128465;&#65039; Reset local data</button>
-  </div>
-</div>
-
-<script>
-// ═══ Account hub logic ═══
-function sfuToggle() {
-  document.getElementById('sfuPanel').classList.toggle('sfu-hidden');
-  if (!document.getElementById('sfuPanel').classList.contains('sfu-hidden')) sfuLoad();
-  if (window.sfPanels) sfPanels.sync('account');
-}
-
-// Anchor to the right panel's outer edge instead of a fixed viewport spot, so it
-// moves with the panel (collapsed vs expanded) instead of sitting on top of it.
-// #rpRoot doesn't exist yet when this script runs (panel-right.js loads later),
-// so the first call falls back to a default until it appears.
-function sfuRepositionHub() {
-  const hub = document.getElementById('sfuHub');
-  const rp = document.getElementById('rpRoot');
-  if (!hub) return;
-  if (window.matchMedia('(max-width: 700px)').matches) { hub.style.right = '10px'; return; }
-  if (rp) {
-    const rect = rp.getBoundingClientRect();
-    hub.style.right = (window.innerWidth - rect.left + 8) + 'px';
-  } else {
-    hub.style.right = '10px';
-  }
-}
-sfuRepositionHub();
-// panel-right.js's own init() is itself deferred to DOMContentLoaded (its script
-// isn't the last thing in the document either), so #rpRoot may not exist yet even
-// here. Re-run one macrotask after DOMContentLoaded — by then every synchronous
-// DOMContentLoaded listener, including panel-right's, has already finished, so this
-// isn't a timing guess the way a fixed setTimeout delay would be.
-document.addEventListener('DOMContentLoaded', () => setTimeout(sfuRepositionHub, 0));
-window.addEventListener('resize', sfuRepositionHub);
-document.addEventListener('transitionend', e => {
-  if (e.target && e.target.id === 'rpRoot') sfuRepositionHub();
-});
-
-function sfuUpdateClock() {
-  const el = document.getElementById('sfuClock');
-  if (el) el.textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
-}
-setInterval(sfuUpdateClock, 1000);
-sfuUpdateClock();
-
-function sfuLoad() {
-  document.getElementById('sfuUsername').value = (typeof getUserName === 'function') ? getUserName() : 'Anonymous Walker';
-  document.getElementById('sfuSignature').value = localStorage.getItem('sf_owner_signature') || '';
-  sfuRenderSpots();
-}
-
-function sfuSaveName() {
-  const name = document.getElementById('sfuUsername').value.trim();
-  if (!name) { if (typeof toast === 'function') toast('Every walker needs a name! \u{1F43E}'); return; }
-  if (typeof setUserName === 'function') setUserName(name);
-  if (typeof toast === 'function') toast('\u{1F464} Name updated to ' + name + '!');
-}
-
-document.getElementById('sfuSignature') && document.getElementById('sfuSignature').addEventListener('blur', () => {
-  localStorage.setItem('sf_owner_signature', document.getElementById('sfuSignature').value);
-});
-
-function sfuGetSpots() {
-  try { return JSON.parse(localStorage.getItem('sf_walk_spots') || '[]'); } catch(e) { return []; }
-}
-
-// Real device GPS, not just wherever the map happens to be panned to.
-function sfuRefreshGPS() {
-  const btn = document.getElementById('sfuGpsBtn');
-  if (!navigator.geolocation) { if (typeof toast === 'function') toast('GPS not supported by this browser \u{1F43E}'); return; }
-  btn.textContent = '⏳';
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      document.getElementById('sfuSpotLat').value = pos.coords.latitude.toFixed(6);
-      document.getElementById('sfuSpotLon').value = pos.coords.longitude.toFixed(6);
-      btn.textContent = '✅';
-      setTimeout(() => { btn.textContent = '\u{1F4CD}'; }, 1500);
-    },
-    err => {
-      if (typeof toast === 'function') toast('GPS error: ' + err.message);
-      btn.textContent = '❌';
-      setTimeout(() => { btn.textContent = '\u{1F4CD}'; }, 1500);
-    },
-    { timeout: 8000 }
-  );
-}
-
-function sfuSaveSpot() {
-  const name = document.getElementById('sfuSpotName').value.trim();
-  if (!name) { if (typeof toast === 'function') toast('Name this spot first! \u{1F43E}'); return; }
-  const typedLat = parseFloat(document.getElementById('sfuSpotLat').value);
-  const typedLon = parseFloat(document.getElementById('sfuSpotLon').value);
-  // Falls back to the current map centre if GPS was never refreshed for this save.
-  const lat = isNaN(typedLat) ? (typeof S !== 'undefined' ? S.lat : null) : typedLat;
-  const lon = isNaN(typedLon) ? (typeof S !== 'undefined' ? S.lon : null) : typedLon;
-  if (lat == null || lon == null) return;
-  const spots = sfuGetSpots();
-  spots.push({ id: Date.now(), name, lat, lon });
-  localStorage.setItem('sf_walk_spots', JSON.stringify(spots));
-  document.getElementById('sfuSpotName').value = '';
-  document.getElementById('sfuSpotLat').value = '';
-  document.getElementById('sfuSpotLon').value = '';
-  sfuRenderSpots();
-  if (typeof toast === 'function') toast('\u{1F4CD} ' + name + ' saved!');
-}
-function sfuRenderSpots() {
-  const list = document.getElementById('sfuSpotList');
-  const spots = sfuGetSpots();
-  if (!spots.length) {
-    list.innerHTML = '<div style="text-align:center;opacity:.4;padding:8px;font-size:.75rem">No saved spots yet</div>';
-    return;
-  }
-  list.innerHTML = spots.map(s => `
-    <div class="sfu-spot-item">
-      <span onclick="sfuGoToSpot(${Number(s.id)})" style="cursor:pointer;flex:1">
-        <span class="sfu-spot-name">${escHtml(s.name)}</span>
-        <span class="sfu-spot-coords">${Number(s.lat).toFixed(4)}, ${Number(s.lon).toFixed(4)}</span>
-      </span>
-      <button class="sfu-spot-del" onclick="sfuDeleteSpot(${Number(s.id)})">&#128465;&#65039;</button>
-    </div>
-  `).join('');
-}
-function sfuGoToSpot(id) {
-  const spot = sfuGetSpots().find(s => s.id === id);
-  if (!spot || typeof S === 'undefined') return;
-  S.lat = spot.lat; S.lon = spot.lon;
-  if (typeof zoomTarget !== 'undefined') zoomTarget = 15;
-  sfuToggle();
-}
-function sfuDeleteSpot(id) {
-  const spots = sfuGetSpots().filter(s => s.id !== id);
-  localStorage.setItem('sf_walk_spots', JSON.stringify(spots));
-  sfuRenderSpots();
-}
-
-function sfuClearData() {
-  if (!confirm('Reset all local Snout First data on this device? This clears pets pinned only in this browser, your notes, saved spots, and settings. Pets already saved to the network are not affected.')) return;
-  ['snoutfirst_pets','snoutfirst_sniffs','snoutfirst_pets_v2','sf_notes','sf_home','sf_lost_pets','sf_vets_custom','sf_food_custom','sf_walk_spots','sf_owner_signature','rv_username','rv_local_uid','sf_walks','sf_pet_photos','sf_dashboard','sf_food_saved_v1','sf_panels'].forEach(k => localStorage.removeItem(k));
-  if (typeof toast === 'function') toast('\u{1F5D1}\u{FE0F} Local data cleared! Reloading...');
-  setTimeout(() => location.reload(), 900);
-}
-</script>
+<!-- The profile box is the shared RUDVENTUR useRbox (the R circle, top right), loaded at the end of
+     this page. Snout First's own part (walk spots on this map, reset local data) is its left section:
+     js/snout-first-userbox.js. -->
 
 <!-- STATS -->
 <div class="stats" id="sfStats">
@@ -1336,9 +1120,15 @@ function openPinModal() {
 function closePinModal() {
   document.getElementById('pinModal').classList.remove('show');
   S._pendingPin = null;
+  if (S._editFbId) {
+    S._editFbId = null;
+    document.querySelector('#pinModal h2').innerHTML = '&#128062; Drop a Pet Pin';
+    ['pinName', 'pinBreed', 'pinBio', 'pinTags'].forEach(id => { document.getElementById(id).value = ''; });
+  }
 }
 
 function savePetPin() {
+  if (S._editFbId) { saveEditedPet(S._editFbId); return; }
   const name = document.getElementById('pinName').value.trim();
   if (!name) { toast('Every pet needs a name! \u{1F43E}'); return; }
   const pet = {
@@ -1743,8 +1533,45 @@ function handleFeedPet(petId) {
   }
 }
 
+// ✏️ on a shared pet: the owner edits its details in the same form used to pin it.
 function handleEditPet(petId) {
-  toast('Edit coming soon! 🐾');
+  const pet = findPetByFbId(petId);
+  if (!pet) { toast('That pet is not on the map any more 🐾'); return; }
+  if (pet.registered_by && pet.registered_by !== getUid()) { toast('Only ' + pet.name + '\'s owner can edit them 🐾'); return; }
+  if (!firebaseReady) { toast('Not connected to network 🐾'); return; }
+  document.getElementById('pinName').value = pet.name || '';
+  document.getElementById('pinSpecies').value = pet.species || 'dog';
+  document.getElementById('pinBreed').value = pet.breed || '';
+  document.getElementById('pinBio').value = pet.bio || '';
+  document.getElementById('pinTags').value = (pet.tags || []).join(', ');
+  const mood = document.getElementById('pinMood');
+  if ([...mood.options].some(o => o.value === pet.mood)) mood.value = pet.mood;
+  S._editFbId = petId;
+  document.querySelector('#pinModal h2').textContent = '\u270F\uFE0F Edit ' + (pet.name || 'pet');
+  closeUserbox();
+  openPinModal();
+}
+async function saveEditedPet(petId) {
+  const name = document.getElementById('pinName').value.trim();
+  if (!name) { toast('Every pet needs a name! \u{1F43E}'); return; }
+  const species = document.getElementById('pinSpecies').value;
+  const update = {
+    name: name.slice(0, PET_LIMITS.name),
+    species: String(species).slice(0, PET_LIMITS.species),
+    emoji: getSpeciesEmoji(species),
+    breed: document.getElementById('pinBreed').value.trim().slice(0, PET_LIMITS.breed),
+    bio: document.getElementById('pinBio').value.trim().slice(0, PET_LIMITS.bio),
+    personality_tags: cleanTags(document.getElementById('pinTags').value.split(',')),
+    mood: document.getElementById('pinMood').value.slice(0, PET_LIMITS.mood)
+  };
+  try {
+    await db.ref('snoutfirst/pets/' + petId).update(update);
+    closePinModal();
+    toast('\u270F\uFE0F ' + name + ' updated!');
+  } catch (e) {
+    console.warn('Pet edit failed:', e);
+    toast('Could not save the changes: ' + (e.code || e.message));
+  }
 }
 
 // ── Override savePetPin to also save to Firebase ──
@@ -1961,6 +1788,8 @@ setTimeout(initFirebaseIntegration, 500);
 <script src="js/doglost-embed.js"></script>
 <script src="js/map-spots.js"></script>
 <script src="js/clown-markers.js"></script>
+<script src="https://rudventur.github.io/RudVentur.com/embed/useRbox.js" data-service="map-merger" defer></script>
+<script src="js/snout-first-userbox.js" defer></script>
 
 <script>
 // ── Panels: one hide / show pattern for every panel (js/panel-toggle.js) ──
@@ -1974,9 +1803,6 @@ if (window.sfPanels) {
     read: () => !!S.trailOpen, apply: open => { if (!!S.trailOpen !== open) toggleTrail(); } });
   sfPanels.register({ id: 'pack', el: '#packPanel', label: 'the pack', side: 'left', remember: false,
     read: () => !!S.packOpen, apply: open => { if (!!S.packOpen !== open) togglePack(); } });
-  sfPanels.register({ id: 'account', el: '#sfuPanel', label: 'useRbox', side: 'top', remember: false,
-    read: () => !document.getElementById('sfuPanel').classList.contains('sfu-hidden'),
-    apply: open => { if (sfPanels.isOpen('account') !== open) sfuToggle(); } });
 }
 </script>
 </body>

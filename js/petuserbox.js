@@ -5,15 +5,16 @@
 
 // Pets are the main character here — a random passerby's identity isn't part of the
 // pet's page by default. The owner always knows who's walking their own pet, and you
-// obviously know when it's you. Everyone else only sees that until walker visibility
-// becomes a paid feature (isPremiumViewer is a stub — always false until that ships).
+// obviously know when it's you. Everyone else sees the walker only as a supporter:
+// "I am a subscriber (supporter)" in the useRbox (localStorage 'rvPublicSettings').
 function canSeeWalkerIdentity(pet, uid) {
   if (pet.registered_by === uid) return true;
   if (pet.current_walker === uid) return true;
   return typeof isPremiumViewer === 'function' && isPremiumViewer();
 }
 function isPremiumViewer() {
-  return false;
+  try { return !!(JSON.parse(localStorage.getItem('rvPublicSettings') || '{}') || {}).subscriber; }
+  catch (e) { return false; }
 }
 
 function renderPetUserboxFull(pet, container, options) {

@@ -124,7 +124,7 @@ its own free allowance.
 ## Why the Tractive connection is switched off
 
 The Tractive form used to ask for your Tractive email and password. It is now
-replaced by a "Tractive — coming later" note and asks for nothing. Reasons:
+replaced by a short note on why, and asks for nothing. "+ link device" on the GPS tab makes the phone itself the tracker instead. Reasons:
 
 1. The helper that talked to Tractive (in the `functions` folder) is a
    Firebase Cloud Function. Cloud Functions only run on the paid Blaze plan,

@@ -91,10 +91,10 @@ window.activateLostMode = function(pet) {
   // Draw zone
   if (typeof drawLostZone === 'function') drawLostZone(pet);
 
-  // Push to ArtSpace City (placeholder hook)
+  // Show it in ArtSpace City too (lost-pets.js there reads 'artspace_lost_pets')
   pushToArtSpaceCity(pet);
 
-  // Firebase broadcast (placeholder)
+  // Share the report on the network (your own pets only, rounded position)
   broadcastLostToFirebase(pet);
 
   saveLostState();
@@ -106,6 +106,7 @@ window.deactivateLostMode = function() {
   if (typeof rpSetLostMode === 'function') rpSetLostMode(false);
   if (typeof clearLostZone === 'function') clearLostZone();
   saveLostState();
+  setTimeout(pushToArtSpaceCity, 0); // after the found pet's lost flag is cleared
 
   // Celebration toast
   setTimeout(() => {
@@ -114,24 +115,17 @@ window.deactivateLostMode = function() {
 };
 
 // ── ArtSpace City crossover ──
-function pushToArtSpaceCity(pet) {
-  // PLACEHOLDER — when ArtSpace City adds a lost-pet layer:
-  // window.parent.postMessage({ type: 'SF_LOST_PET', pet }, '*');
-  // or: artSpaceCityAddPin({ type:'lost', ...pet });
-  // For now, write to localStorage so ArtSpace can read it
+function pushToArtSpaceCity(justLost) {
+  // ArtSpace City (index.html, lost-pets.js) draws every entry of this key on its map and
+  // follows changes, also when both pages are open side by side. Written from the pets that
+  // are lost right now, so a found pet disappears from there as well.
   try {
-    const existing = JSON.parse(localStorage.getItem('artspace_lost_pets') || '[]');
-    const idx = existing.findIndex(p => p.name === pet.name);
-    const entry = {
-      name: pet.name, species: pet.species,
-      lat: pet.lostLat, lon: pet.lostLon,
-      lostAt: pet.lostAt, active: true
-    };
-    if (idx >= 0) existing[idx] = entry;
-    else existing.push(entry);
-    localStorage.setItem('artspace_lost_pets', JSON.stringify(existing));
-    // PLACEHOLDER: ArtSpace City will read 'artspace_lost_pets' on its map init
-    console.log('[SnoutFirst] Lost pet written to artspace_lost_pets localStorage key');
+    const pets = (typeof S !== 'undefined' && S.pets) || [];
+    const list = pets.filter(p => (p.lost || p === justLost) && isFinite(p.lostLat) && isFinite(p.lostLon)).map(p => ({
+      name: String(p.name || '').slice(0, 40), species: p.species,
+      lat: +p.lostLat, lon: +p.lostLon, lostAt: p.lostAt || Date.now(), active: true
+    }));
+    localStorage.setItem('artspace_lost_pets', JSON.stringify(list));
   } catch(e) {}
 }
 

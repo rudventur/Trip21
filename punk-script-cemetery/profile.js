@@ -5,7 +5,7 @@
   const viewUID = params.get('uid');
   const entityType = params.get('type') || 'human';
   const isViewMode = !!viewUID;
-  const myUID = isViewMode ? viewUID : getOrCreateUID();
+  let myUID = isViewMode ? viewUID : getOrCreateUID();  // becomes the sign-in id (firebase.js socialReady)
 
   const typeInfo = ENTITY_TYPES[entityType] || ENTITY_TYPES.human;
 
@@ -266,7 +266,8 @@
       showToast('give yourself a name at least');
       return;
     }
-    saveProfile(myUID, data).then(function() {
+    saveProfile(myUID, data).then(function(me) {
+      if (me) myUID = me;
       cacheProfile(myUID, data);
       showToast(entityType === 'cemetery' ? 'memorial saved. rest in peace.' : "that's you. saved.");
       document.getElementById('share-section').style.display = 'block';
@@ -316,8 +317,8 @@
       renderViewMode(cached);
     });
   } else {
-    // Edit own profile — load existing data
-    loadProfile(myUID).then(function(data) {
+    // Edit own profile — load existing data (under the sign-in id once it is known)
+    socialReady.then(function(me) { myUID = me; }, function() {}).then(function() { return loadProfile(myUID); }).then(function(data) {
       if (data) {
         cacheProfile(myUID, data);
         populateForm(data);

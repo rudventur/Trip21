@@ -2,7 +2,7 @@
 //  panel-right.js — Snout First Right Panel: the LISTS
 //  Lists (always show every pet, including ones taken off the dashboard):
 //    All pets · My pets · Lost · Out walking · Off dashboard · Friends and
-//    family (coming later, empty)
+//    family (pets and owners you marked 🤝 friend on this device)
 //  Places and help: Home · Vets (real vets from OpenStreetMap, see
 //    js/vets.js) · Food (real food banks from Give Food, the Blue Cross pet
 //    food bank map and OpenStreetMap, see js/foodbanks.js)
@@ -341,7 +341,7 @@ function injectRightPanel() {
 
 // ── Data ──
 // (The old Pack and Family tabs showed made-up example pets; they are replaced
-// by real-data lists. Friends and family is shown as "coming later", empty.)
+// by real-data lists. Friends and family holds the pets you mark 🤝 friend.)
 // (The Vets tab used to start with two made-up clinics, "City Vet Clinic" and
 // "Paws & Claws". They are gone: the vets now come live from OpenStreetMap,
 // see js/vets.js.)
@@ -462,7 +462,8 @@ function rpPetEntry(p) {
     <div class="rp-pet-btns">
       <span class="rp-pin-btn" data-act="go">🎯 Go</span>
       ${action}
-      ${D.isMine(p) ? '<span class="rp-badge mine">yours</span>' : ''}
+      ${D.isMine(p) ? '<span class="rp-badge mine">yours</span>'
+        : `<span class="rp-pin-btn" data-act="friend" title="Friends and family">${D.isFriend(p) ? '🤝 friend ✓' : '🤝 friend'}</span>`}
     </div>
   </div>`;
 }
@@ -509,6 +510,10 @@ function rpOnContentClick(e) {
     if (typeof toast === 'function') toast(`📌 ${pet.name} pinned to the top of your dashboard`);
   } else if (act === 'unpin') {
     sfDash.unpin(pet);
+  } else if (act === 'friend') {
+    const on = !sfDash.isFriend(pet);
+    sfDash.setFriend(pet, on);
+    if (typeof toast === 'function') toast(on ? `🤝 ${pet.name} is in your friends and family` : `${pet.name} left your friends and family`);
   } else {
     if (typeof panToPet === 'function') panToPet(S.pets.indexOf(pet));
     if (sfDash.isPhone()) sfDash.setPanelOpen('right', false);

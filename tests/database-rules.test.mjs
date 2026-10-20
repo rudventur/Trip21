@@ -1,0 +1,70 @@
+// Checks database.rules.json against the Firebase emulator (no real data is touched).
+// How to run it (needs Node and Java 21 or newer):
+//   npm install --no-save firebase-tools @firebase/rules-unit-testing firebase@10
+//   npx firebase emulators:exec --only database --project demo-trip21 "node tests/database-rules.test.mjs"
+// The emulator reads the rules from firebase.json at the top of this repository.
+import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
+import { ref, set, get, update, remove, push, serverTimestamp, query, orderByKey, limitToLast } from "firebase/database";
+import fs from "fs";
+const env = await initializeTestEnvironment({ projectId: "demo-trip21", database: { host: "127.0.0.1", port: 9000, rules: fs.readFileSync(new URL("../database.rules.json", import.meta.url), "utf8") } });
+let pass = 0, fail = 0;
+const t = async (name, fn) => { try { await fn(); pass++; console.log("ok   ", name); } catch (e) { fail++; console.log("FAIL ", name, "\n     ", String(e.message).slice(0, 200)); } };
+const A = env.authenticatedContext("alice").database();
+const B = env.authenticatedContext("bob").database();
+const C = env.authenticatedContext("carol").database();
+const anon = env.unauthenticatedContext().database();
+const R = "K7QX2";
+const member = (n, share = "off") => ({ name: n, color: "#ff6b35", joined: serverTimestamp(), share });
+const place = { name: "Paris", lat: 48.85, lon: 2.35, desc: "d", loc: "France", source: "osm", link: "https://example.com/x" };
+
+await t("signed-out cannot create room", () => assertFails(set(ref(anon, `rooms/${R}/meta`), { host: "x", created: serverTimestamp() })));
+await t("cannot create room with a bad code", () => assertFails(set(ref(A, `rooms/ab/meta`), { host: "alice", created: serverTimestamp() })));
+await t("cannot create room naming someone else as host", () => assertFails(set(ref(A, `rooms/${R}/meta`), { host: "bob", created: serverTimestamp() })));
+await t("alice creates room", () => assertSucceeds(set(ref(A, `rooms/${R}/meta`), { host: "alice", created: serverTimestamp() })));
+await t("bob cannot take over existing room code", () => assertFails(set(ref(B, `rooms/${R}/meta`), { host: "bob", created: serverTimestamp() })));
+await t("non-member cannot read room", () => assertFails(get(ref(B, `rooms/${R}/members`))));
+await t("alice joins as member", () => assertSucceeds(set(ref(A, `rooms/${R}/members/alice`), member("Alice"))));
+await t("bob cannot join a room that does not exist", () => assertFails(set(ref(B, `rooms/ZZZZ2/members/bob`), member("Bob"))));
+await t("bob cannot add alice as member", () => assertFails(set(ref(B, `rooms/${R}/members/alice`), member("Hacked"))));
+await t("member name too long rejected", () => assertFails(set(ref(B, `rooms/${R}/members/bob`), { ...member("x".repeat(40)) })));
+await t("bad colour rejected", () => assertFails(set(ref(B, `rooms/${R}/members/bob`), { ...member("Bob"), color: "red" })));
+await t("bad share value rejected", () => assertFails(set(ref(B, `rooms/${R}/members/bob`), member("Bob", "everyone"))));
+await t("bob joins as member", () => assertSucceeds(set(ref(B, `rooms/${R}/members/bob`), member("Bob"))));
+await t("member can read room", () => assertSucceeds(get(ref(B, `rooms/${R}/members`))));
+await t("outsider carol still cannot read", () => assertFails(get(ref(C, `rooms/${R}`))));
+await t("outsider carol cannot read positions", () => assertFails(get(ref(C, `rooms/${R}/positions`))));
+await t("alice position ok", () => assertSucceeds(set(ref(A, `rooms/${R}/positions/alice`), { lat: 51.5, lon: -0.12, acc: 1000, t: Date.now() })));
+await t("bob cannot write alice position", () => assertFails(set(ref(B, `rooms/${R}/positions/alice`), { lat: 1, lon: 1, acc: 1, t: Date.now() })));
+await t("latitude out of range rejected", () => assertFails(set(ref(B, `rooms/${R}/positions/bob`), { lat: 95, lon: 1, acc: 1, t: Date.now() })));
+await t("longitude out of range rejected", () => assertFails(set(ref(B, `rooms/${R}/positions/bob`), { lat: 5, lon: 190, acc: 1, t: Date.now() })));
+await t("future timestamp rejected", () => assertFails(set(ref(B, `rooms/${R}/positions/bob`), { lat: 5, lon: 10, acc: 1, t: Date.now() + 3600000 })));
+await t("extra field in position rejected", () => assertFails(set(ref(B, `rooms/${R}/positions/bob`), { lat: 5, lon: 10, acc: 1, t: Date.now(), secret: 1 })));
+await t("bob position ok", () => assertSucceeds(set(ref(B, `rooms/${R}/positions/bob`), { lat: 5, lon: 10, acc: 20, t: Date.now() })));
+await t("bob can stop sharing (delete own position)", () => assertSucceeds(remove(ref(B, `rooms/${R}/positions/bob`))));
+await t("bob cannot delete alice position", () => assertFails(remove(ref(B, `rooms/${R}/positions/alice`))));
+await t("presence own ok", () => assertSucceeds(set(ref(B, `rooms/${R}/presence/bob`), { online: true, lastSeen: serverTimestamp() })));
+await t("presence of another rejected", () => assertFails(set(ref(B, `rooms/${R}/presence/alice`), { online: false, lastSeen: serverTimestamp() })));
+await t("member can update own share mode", () => assertSucceeds(update(ref(B, `rooms/${R}/members/bob`), { share: "rough" })));
+await t("single roll ok", () => assertSucceeds(set(push(ref(B, `rooms/${R}/rolls`)), { by: "bob", name: "Bob", t: serverTimestamp(), kind: "place", tripType: "oneway", start: { lat: 1, lon: 2, name: "x" }, target: place })));
+await t("trip roll with extras ok", () => assertSucceeds(set(push(ref(B, `rooms/${R}/rolls`)), { by: "bob", name: "Bob", t: serverTimestamp(), kind: "trip", tripType: "loop", start: { lat: 1, lon: 2, name: "" }, target: place, extras: [place, { name: "Rome", lat: 41.9, lon: 12.5 }] })));
+await t("roll claiming to be from someone else rejected", () => assertFails(set(push(ref(B, `rooms/${R}/rolls`)), { by: "alice", name: "Alice", t: serverTimestamp(), kind: "place", start: { lat: 1, lon: 2 }, target: place })));
+await t("roll with bad coordinates rejected", () => assertFails(set(push(ref(B, `rooms/${R}/rolls`)), { by: "bob", name: "Bob", t: serverTimestamp(), kind: "place", start: { lat: 1, lon: 2 }, target: { ...place, lat: 200 } })));
+await t("roll with javascript link rejected", () => assertFails(set(push(ref(B, `rooms/${R}/rolls`)), { by: "bob", name: "Bob", t: serverTimestamp(), kind: "place", start: { lat: 1, lon: 2 }, target: { ...place, link: "javascript:alert(1)" } })));
+await t("outsider cannot post a roll", () => assertFails(set(push(ref(C, `rooms/${R}/rolls`)), { by: "carol", name: "Carol", t: serverTimestamp(), kind: "place", start: { lat: 1, lon: 2 }, target: place })));
+await t("member cannot edit an existing roll", async () => { const snap = await get(ref(B, `rooms/${R}/rolls`)); const k = Object.keys(snap.val())[0]; await assertFails(set(ref(B, `rooms/${R}/rolls/${k}/name`), "Changed")); });
+await t("member reads latest rolls (ordered by key)", () => assertSucceeds(get(query(ref(B, `rooms/${R}/rolls`), orderByKey(), limitToLast(8)))));
+await t("non-host cannot change settings", () => assertFails(set(ref(B, `rooms/${R}/settings`), { locked: true })));
+await t("host can lock room", () => assertSucceeds(set(ref(A, `rooms/${R}/settings`), { locked: true })));
+await t("new person cannot join a locked room", () => assertFails(set(ref(C, `rooms/${R}/members/carol`), member("Carol"))));
+await t("existing member can still update when locked", () => assertSucceeds(update(ref(B, `rooms/${R}/members/bob`), { share: "off" })));
+await t("host can unlock room", () => assertSucceeds(set(ref(A, `rooms/${R}/settings`), { locked: false })));
+await t("carol joins unlocked room", () => assertSucceeds(set(ref(C, `rooms/${R}/members/carol`), member("Carol"))));
+await t("carol leaves (removes own membership)", () => assertSucceeds(remove(ref(C, `rooms/${R}/members/carol`))));
+await t("non-host cannot delete the room", () => assertFails(remove(ref(B, `rooms/${R}`))));
+await t("member cannot change meta host", () => assertFails(set(ref(B, `rooms/${R}/meta/host`), "bob")));
+await t("nothing outside rooms is readable", () => assertFails(get(ref(A, `secret`))));
+await t("nothing outside rooms is writable", () => assertFails(set(ref(A, `secret`), 1)));
+await t("host deletes the room", () => assertSucceeds(remove(ref(A, `rooms/${R}`))));
+await env.cleanup();
+console.log(`\n${pass} passed, ${fail} failed`);
+process.exit(fail ? 1 : 0);

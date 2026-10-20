@@ -1,0 +1,200 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$code": {
+        ".validate": "$code.matches(/^[A-HJ-NP-Z2-9]{5}$/)",
+        ".read": "auth != null && root.child('rooms').child($code).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && !newData.exists() && data.child('meta').child('host').val() === auth.uid",
+        "meta": {
+          ".write": "auth != null && !data.exists() && newData.child('host').val() === auth.uid",
+          ".validate": "newData.hasChildren(['host', 'created']) && newData.child('host').isString() && newData.child('created').val() === now",
+          "host": {
+            ".validate": "newData.isString()"
+          },
+          "created": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "settings": {
+          ".write": "auth != null && root.child('rooms').child($code).child('meta').exists() && root.child('rooms').child($code).child('meta').child('host').val() === auth.uid",
+          ".validate": "newData.hasChildren(['locked'])",
+          "locked": {
+            ".validate": "newData.isBoolean()"
+          },
+          "title": {
+            ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 40"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "members": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($code).child('meta').exists() && (!newData.exists() || data.exists() || root.child('rooms').child($code).child('settings').child('locked').val() !== true)",
+            ".validate": "newData.hasChildren(['name', 'color', 'joined', 'share'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+            },
+            "color": {
+              ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"
+            },
+            "joined": {
+              ".validate": "newData.isNumber()"
+            },
+            "share": {
+              ".validate": "newData.isString() && (newData.val() === 'off' || newData.val() === 'rough' || newData.val() === 'exact')"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "presence": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($code).child('members').child(auth.uid).exists()",
+            ".validate": "newData.hasChildren(['online', 'lastSeen'])",
+            "online": {
+              ".validate": "newData.isBoolean()"
+            },
+            "lastSeen": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "positions": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($code).child('members').child(auth.uid).exists()",
+            ".validate": "newData.hasChildren(['lat', 'lon', 't'])",
+            "lat": {
+              ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+            },
+            "lon": {
+              ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+            },
+            "acc": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+            },
+            "t": {
+              ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "rolls": {
+          "$id": {
+            ".write": "auth != null && root.child('rooms').child($code).child('members').child(auth.uid).exists() && !data.exists() && newData.exists() && newData.child('by').val() === auth.uid",
+            ".validate": "newData.hasChildren(['by', 'name', 't', 'kind', 'start', 'target'])",
+            "by": {
+              ".validate": "newData.isString()"
+            },
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+            },
+            "t": {
+              ".validate": "newData.isNumber() && newData.val() === now"
+            },
+            "kind": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 12"
+            },
+            "tripType": {
+              ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 20"
+            },
+            "start": {
+              ".validate": "newData.hasChildren(['lat', 'lon'])",
+              "lat": {
+                ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+              },
+              "lon": {
+                ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+              },
+              "name": {
+                ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 120"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "target": {
+              ".validate": "newData.hasChildren(['name', 'lat', 'lon'])",
+              "name": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 120"
+              },
+              "lat": {
+                ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+              },
+              "lon": {
+                ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+              },
+              "desc": {
+                ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 300"
+              },
+              "loc": {
+                ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 120"
+              },
+              "source": {
+                ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 20"
+              },
+              "link": {
+                ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 300 && newData.val().matches(/^https?:\\/\\//)"
+              },
+              "wikipedia": {
+                ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 200"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "extras": {
+              "$i": {
+                ".validate": "newData.hasChildren(['name', 'lat', 'lon'])",
+                "name": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 120"
+                },
+                "lat": {
+                  ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+                },
+                "lon": {
+                  ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+                },
+                "desc": {
+                  ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 300"
+                },
+                "loc": {
+                  ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 120"
+                },
+                "source": {
+                  ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 20"
+                },
+                "link": {
+                  ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 300 && newData.val().matches(/^https?:\\/\\//)"
+                },
+                "wikipedia": {
+                  ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 200"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

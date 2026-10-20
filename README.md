@@ -18,6 +18,13 @@ The three repos below were merged in **with their full git history**, each in it
 "Roll it for real" opens `rudTrip20/globe.html?go=1&cont=…&world=…&mode=…&days=…&dir=…&lucky=…`,
 which applies those ticks and rolls a live target straight away (`rudTrip20/js/app.js`).
 
+## Group trips (multiplayer)
+
+`rudTrip20/` can run group trips: start a room, share the join link and see each other's rolls and
+(optionally, rounded to about one kilometre) positions on the map and globe. It uses the separate
+Firebase project `trip21-25f36` (`firebase-config.js`, `database.rules.json`). See `MULTIPLAYER.md`
+for how to publish the rules and test it.
+
 ## Running locally
 
 Static site — serve the repo root over http (not `file://`):

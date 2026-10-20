@@ -17,6 +17,46 @@
       padding: 16px 12px 50px; line-height: 1.4;
     }
     .container { max-width: 860px; margin: 0 auto; }
+
+    .trip-shell { display: flex; align-items: flex-start; gap: 12px; max-width: 1180px; margin: 0 auto; padding: 12px; }
+    .container { max-width: none; flex: 1; min-width: 0; margin: 0; }
+    #inventory {
+      width: 230px; flex: 0 0 230px; background: #1a140c; border: 2px solid #8a6a32;
+      border-radius: 6px; padding: 10px; color: #e6d3a3; font-family: ui-monospace, monospace;
+    }
+    #inventory .sf-phead { margin-bottom: 8px; }
+    .inv-bag { margin-bottom: 10px; }
+    .inv-bag h3 { font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: #c4b06a; margin-bottom: 4px; }
+    .inv-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; min-height: 36px; }
+    .inv-slot, .inv-item {
+      border: 1px solid #5c4a28; background: #241c12; min-height: 34px; padding: 4px 6px;
+      font-size: 0.68rem; line-height: 1.25;
+    }
+    .inv-item { cursor: grab; }
+    .inv-slot.over { outline: 1px solid #ff6b35; }
+    #inventory button { margin-top: 6px; width: 100%; border: 1px solid #8a6a32; background: #2a2116; color: #e6d3a3; padding: 6px; cursor: pointer; font-size: 0.72rem; }
+    
+    #inventory input, #dashPanel input { width: 100%; margin: 4px 0; background: #120e09; color: #e6d3a3; border: 1px solid #5c4a28; padding: 4px; }
+    #inventory details { margin-bottom: 8px; }
+
+    .vitru svg { width: 100%; height: 120px; display: block; margin: 6px 0; }
+    .body-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .body-box { border: 1px solid #8a6a32; background: #241c12; color: #e6d3a3; font-size: 0.68rem; padding: 4px; cursor: pointer; text-align: left; }
+
+    #inventory summary { cursor: pointer; color: #c4b06a; }
+    #dashPanel { width: 230px; flex: 0 0 230px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+    #dashPanel .sf-phead { margin-bottom: 8px; }
+
+    #dashBoard { margin: 10px 0 14px; border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: var(--card); }
+    #dashBoard h2 { font-size: 0.88rem; margin-bottom: 8px; }
+    .dash-tools { display: flex; gap: 8px; margin-bottom: 8px; }
+    .dash-tools button { border: 1px solid var(--border); background: var(--bg); color: var(--text); padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+    .dash-card { display: flex; gap: 8px; align-items: flex-start; border-top: 1px solid var(--border); padding: 8px 0; font-size: 0.8rem; }
+    .dash-card .bin { margin-left: auto; border: 1px solid #5c3a22; color: #ffb380; background: transparent; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+    /* phones: stretch the stacked columns to the screen width (with flex-start the
+       page grew to 914px as soon as the Universe Map or Trip Board was opened) */
+    @media (max-width: 800px) { .trip-shell { flex-direction: column; align-items: stretch; } #inventory, #dashPanel { width: 100%; flex-basis: auto; } }
+
     header { text-align: center; margin-bottom: 18px; }
     h1 { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.5px; }
     .subtitle { color: var(--muted); font-size: 0.88rem; margin-top: 3px; }
@@ -68,6 +108,13 @@
       border: 1px solid var(--border); border-radius: 11px; overflow: hidden;
     }
     #mainMap { height: 260px; width: 100%; background: #1a1d24; }
+    .map-row { display: flex; gap: 8px; align-items: stretch; }
+    #miniMap { width: 168px; flex: 0 0 168px; height: 260px; border: 1px solid var(--border); border-radius: 11px; background: #10110e; cursor: pointer; }
+    @media (max-width: 640px) { .map-row { flex-direction: column; } #miniMap { width: 100%; height: 120px; } }
+    #wikiNote { margin-top: 8px; font-size: 0.84rem; color: var(--text); line-height: 1.4; }
+    #wikiNote a { color: var(--accent2); }
+    #savedRolls { margin-top: 8px; font-size: 0.75rem; color: var(--muted); }
+    #savedRolls button { margin-left: 6px; }
     .resize-handle {
       position: absolute; right: 0; top: 0; bottom: 0; width: 10px;
       background: linear-gradient(90deg, transparent, rgba(255,107,53,0.35));
@@ -337,6 +384,7 @@
       #inventory.sf-panel-collapsed .sf-phead, #dashPanel.sf-panel-collapsed .sf-phead { margin-bottom: 0; }
     }
   </style>
+<link rel="stylesheet" href="css/pubcrawl.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
@@ -346,6 +394,9 @@
 <script src="https://rudventur.github.io/RudVentur.com/embed/rvView.js"></script>
 </head>
 <body>
+  <div class="trip-shell">
+  <button class="sf-ptab side-tab side-tab--left" type="button" data-panel-toggle="inventory"><span class="sf-pt-icon"></span><span class="sf-pt-label" data-closed="🎒 Inventory"></span></button>
+  <aside id="inventory"></aside>
   <div class="container">
     <header id="tripHeader">
       <div class="sf-phead trip-head">
@@ -356,6 +407,37 @@
     </header>
     <!-- Brings the top panel back once it has been hidden -->
     <button class="sf-ptab top-tab" type="button" data-panel-toggle="header"><span class="sf-pt-icon"></span><span class="sf-pt-label" data-closed="RudVentur – Feeling Lucky"></span></button>
+
+    <!-- Trip20 Pub Crawl: random pub route from live OpenStreetMap data (js/pubcrawl.js) -->
+    <details id="pubCrawl" open>
+      <summary>🍻 Random Pub Crawl <span class="wt-toggle">tap to fold</span></summary>
+      <div class="pc-where">
+        <button type="button" id="pcGps" class="pc-btn">📍 Near me</button>
+        <form id="pcPlaceForm"><input id="pcPlace" type="search" placeholder="…or a place, e.g. Soho London, Kraków" /><button class="pc-btn">Go</button></form>
+      </div>
+      <div class="pc-sliders one">
+        <label>Close by: <b id="pcRadiusVal">1.5 km</b><input type="range" id="pcRadius" min="0.5" max="5" step="0.5" value="1.5"></label>
+      </div>
+      <p class="pc-sub">Your night, step by step</p>
+      <ol id="pcSteps" class="pc-steps"></ol>
+      <button type="button" id="pcAddStep" class="pc-btn pc-add">➕ Add step</button>
+      <div class="pc-opts">
+        <label><input type="checkbox" id="pcUnknown"> Include places where it's unknown (e.g. karaoke or cocktails not tagged)</label>
+      </div>
+      <p class="pc-note">Types and extras use OpenStreetMap tags. Many places simply aren't tagged, so "unknown" doesn't mean "no".</p>
+      <button type="button" id="pcRoll" class="pc-go">🎲 Roll my pub crawl</button>
+      <p id="pcStatus" class="pc-status"></p>
+      <p id="pcWhere" class="pc-note"></p>
+      <div id="pcMap"></div>
+      <div id="pcSummary" class="pc-summary"></div>
+      <div id="pcActions" class="pc-actions" hidden>
+        <button type="button" id="pcReroll" class="pc-btn">🔁 Re-roll whole crawl</button>
+        <a id="pcGmaps" class="pc-btn" target="_blank" rel="noopener">🧭 Walk it in Google Maps</a>
+      </div>
+      <ol id="pcList" class="pc-list"></ol>
+      <p id="pcCounts" class="pc-note"></p>
+      <p class="pc-note">Pub data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> via Overpass API. 🍻 Drink responsibly, pace yourself, drink water between stops and never drink and drive.</p>
+    </details>
 
     <!-- Live weather ticker -->
     <section id="weatherTicker" class="trip-panel sf-panel-collapsed">
@@ -494,11 +576,15 @@
     <!-- Map -->
     <div class="field">
       <label>Search region (drag right edge to resize)</label>
+      <div class="map-row">
       <div class="map-wrap" id="mapWrap">
         <div id="mainMap"></div>
+        <div class="grid-readout" style="position:absolute;left:8px;bottom:6px;z-index:2;font:11px ui-monospace,monospace;color:#c4b06a;pointer-events:none">GPS grid</div>
         <div class="resize-handle" id="resizeHandle"></div>
       </div>
-      <p class="map-hint">This is the real search area — pan/zoom the map (or use GPS / pick a point) before hitting Lucky. No curated list, ever: every target comes from a live OpenStreetMap search inside whatever the map is showing, or — if nothing local turns up — a real live headline from a free news site, placed on the map with a funny route to reach it.</p>
+      <div id="miniMap" title="Whole globe. The orange box is the grid view. Click to jump."></div>
+      </div>
+      <p class="map-hint">GPS grid, not a street map. Wheel to zoom, drag to pan — the squares get smaller so a few lines always stay visible. Lucky picks a cell in what you are looking at. A real map appears only after a start and a target exist.</p>
     </div>
 
     <button id="go">I’m Feeling Lucky</button>
@@ -510,6 +596,7 @@
         <div class="target-label">Your Lucky Target</div>
         <div class="target-name" id="targetName"></div>
         <div class="target-desc" id="targetDesc"></div>
+        <div id="wikiNote"></div>
         <div class="target-gps" id="targetGps"></div>
         <div class="target-photo" id="targetPhoto"></div>
         <div class="countdown" id="countdown" style="display:none;"></div>
@@ -545,6 +632,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/grid-globe.js"></script>
   <script src="search-engine.js"></script>
   <script src="modes-extra.js"></script>
   <script>
@@ -603,7 +691,7 @@
     }
 
     (function () {
-      const WEATHER_FEED_URL = "https://rss.app/feeds/tRcMwW2Kz8Jl5nNn.xml";
+      const WEATHER_FEED_URL = ""; // rss.app feed was paid (402). Weather is Open-Meteo, news is Wikipedia.
 
       function stripHtml(html) {
         const doc = new DOMParser().parseFromString(html, "text/html");
@@ -628,24 +716,48 @@
         const itemsEl = document.getElementById("weatherItems");
         if (!statusEl || !itemsEl) return;
         statusEl.style.display = "block";
-        statusEl.textContent = "Loading live feed…";
+        statusEl.textContent = "Loading free weather and news…";
         try {
-          const res = await fetch(WEATHER_FEED_URL, { cache: "no-store" });
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          const xml = new DOMParser().parseFromString(await res.text(), "text/xml");
-          if (xml.querySelector("parsererror")) throw new Error("feed parse error");
-
-          const items = [...xml.getElementsByTagName("item")].slice(0, 6).map(item => {
-            const media = item.getElementsByTagName("media:content")[0];
-            return {
-              title: tagText(item, "title"),
-              link: safeUrl(tagText(item, "link")),
-              creator: tagText(item, "dc:creator"),
-              pubDate: tagText(item, "pubDate"),
-              snippet: stripHtml(tagText(item, "description")),
-              image: media ? safeUrl(media.getAttribute("url") || "") : ""
-            };
-          });
+          const items = [];
+          const here = (typeof startLatLon !== "undefined" && startLatLon) || { lat: 51.5, lon: -0.12 };
+          try {
+            const wq = new URL("https://api.open-meteo.com/v1/forecast");
+            wq.searchParams.set("latitude", here.lat);
+            wq.searchParams.set("longitude", here.lon);
+            wq.searchParams.set("current", "temperature_2m,weather_code,wind_speed_10m");
+            wq.searchParams.set("daily", "temperature_2m_max,temperature_2m_min,weather_code");
+            wq.searchParams.set("forecast_days", "3");
+            wq.searchParams.set("timezone", "auto");
+            const wr = await fetch(wq);
+            if (wr.ok) {
+              const wj = await wr.json();
+              const cur = wj.current || {};
+              items.push({
+                title: Math.round(cur.temperature_2m) + "° now, wind " + Math.round(cur.wind_speed_10m || 0) + " km/h",
+                link: "https://open-meteo.com/",
+                creator: "Open-Meteo",
+                pubDate: "",
+                snippet: "Free forecast for the start point. No key.",
+                image: ""
+              });
+            }
+          } catch (e) { /* weather is best-effort */ }
+          const now = new Date();
+          const wiki = "https://en.wikipedia.org/api/rest_v1/feed/featured/" + now.getUTCFullYear() + "/" + String(now.getUTCMonth()+1).padStart(2,"0") + "/" + String(now.getUTCDate()).padStart(2,"0");
+          const nr = await fetch(wiki);
+          if (!nr.ok) throw new Error("HTTP " + nr.status);
+          const nj = await nr.json();
+          for (const bundle of (nj.news || []).slice(0, 6)) {
+            const link = (bundle.links && bundle.links[0]) || {};
+            items.push({
+              title: link.normalizedtitle || link.title || bundle.story || "Wikipedia news",
+              link: safeUrl((link.content_urls && link.content_urls.desktop && link.content_urls.desktop.page) || ""),
+              creator: "Wikipedia",
+              pubDate: "",
+              snippet: stripHtml(bundle.story || ""),
+              image: ""
+            });
+          }
 
           if (!items.length) {
             statusEl.textContent = "No stories in the feed right now.";
@@ -721,6 +833,95 @@
     // handling, and rendering whatever it hands back.
     const { pick, KEYWORD_IDEAS } = TripSearchEngine;
 
+
+    const ROLL_KEY = "rudTrip20.lucky.v1";
+    function rememberRoll(target) {
+      if (!target) return;
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem(ROLL_KEY) || "[]"); } catch { list = []; }
+      list.unshift({
+        at: new Date().toISOString(), mode: luckyMode,
+        name: target.name, lat: target.lat, lon: target.lon, source: target.source || ""
+      });
+      try { localStorage.setItem(ROLL_KEY, JSON.stringify(list.slice(0, 40))); } catch {}
+      paintSaved();
+    }
+    function paintSaved() {
+      const box = document.getElementById("savedRolls");
+      if (!box) return;
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem(ROLL_KEY) || "[]"); } catch { list = []; }
+      box.textContent = list.length ? ("Saved on this device: " + list.slice(0, 5).map(r => r.name).join(" · ")) : "No saved rolls yet.";
+      if (window.TripDash) window.TripDash.paint();
+    }
+    async function attachWiki(target) {
+      const el = document.getElementById("wikiNote");
+      if (!el || !target) return;
+      el.textContent = "Asking Wikipedia…";
+      try {
+        const res = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(target.name));
+        if (!res.ok) { el.textContent = "No Wikipedia page under that name yet. The pin still stands."; return; }
+        const j = await res.json();
+        el.textContent = "";
+        el.append(document.createTextNode(j.extract || "Wikipedia had no summary."));
+        const page = j.content_urls && j.content_urls.desktop && j.content_urls.desktop.page;
+        if (page) {
+          const a = document.createElement("a");
+          a.href = page; a.target = "_blank"; a.rel = "noopener"; a.textContent = " Open on Wikipedia";
+          el.append(a);
+        }
+      } catch {
+        el.textContent = "Wikipedia unreachable. The pin is still the result.";
+      }
+    }
+    function gridOnly(mode) {
+      const cell = mainMap._grid.randomCell();
+      return {
+        name: "Grid " + cell.lat.toFixed(2) + ", " + cell.lon.toFixed(2),
+        lat: cell.lat, lon: cell.lon,
+        desc: "No internet just now. This is a random cell on the grid, not a stored place.",
+        loc: "offline grid", source: "grid", link: ""
+      };
+    }
+    async function liveOrGrid(mode, keyword, setStatus) {
+      const say = m => { if (setStatus) setStatus(m); };
+      const cell = mainMap._grid.randomCell();
+      try {
+        say("Live sources empty — asking Wikipedia…");
+        if (mode === "news" || mode === "event") {
+          const now = new Date();
+          const url = "https://en.wikipedia.org/api/rest_v1/feed/featured/" + now.getUTCFullYear() + "/" + String(now.getUTCMonth()+1).padStart(2,"0") + "/" + String(now.getUTCDate()).padStart(2,"0");
+          const j = await (await fetch(url)).json();
+          const bundle = (j.news || [])[Math.floor(Math.random() * Math.max(1, (j.news || []).length))] || {};
+          const link = (bundle.links && bundle.links[0]) || {};
+          return { name: link.title || "Wikipedia news", lat: cell.lat, lon: cell.lon, desc: bundle.story || "A live Wikipedia headline, placed on a random grid cell.", loc: "Wikipedia", source: "wikipedia", link: (link.content_urls && link.content_urls.desktop && link.content_urls.desktop.page) || "" };
+        }
+        if (mode === "historical") {
+          const now = new Date();
+          const url = "https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/" + String(now.getUTCMonth()+1).padStart(2,"0") + "/" + String(now.getUTCDate()).padStart(2,"0");
+          const j = await (await fetch(url)).json();
+          const ev = (j.events || [])[Math.floor(Math.random() * Math.max(1, (j.events || []).length))] || {};
+          const page = (ev.pages && ev.pages[0]) || {};
+          return { name: page.titles && page.titles.normalized || ("On this day " + (ev.year || "")), lat: cell.lat, lon: cell.lon, desc: ev.text || "A live on-this-day event.", loc: "Wikipedia", source: "wikipedia", link: (page.content_urls && page.content_urls.desktop && page.content_urls.desktop.page) || "" };
+        }
+        if (mode === "geographical" || mode === "gems" || mode === "place") {
+          const geo = "https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=" + cell.lat + "|" + cell.lon + "&gsradius=10000&gslimit=8&format=json&origin=*";
+          const j = await (await fetch(geo)).json();
+          const hits = (j.query && j.query.geosearch) || [];
+          if (hits.length) {
+            const hit = hits[Math.floor(Math.random() * hits.length)];
+            return { name: hit.title, lat: hit.lat, lon: hit.lon, desc: "A live Wikipedia place near the rolled cell. " + hit.dist + " m from the cell centre.", loc: "Wikipedia geosearch", source: "wikipedia", link: "https://en.wikipedia.org/wiki/" + encodeURIComponent(hit.title.replace(/ /g, "_")) };
+          }
+        }
+        const summary = await (await fetch("https://en.wikipedia.org/api/rest_v1/page/random/summary")).json();
+        return { name: summary.title || "Wikipedia", lat: cell.lat, lon: cell.lon, desc: summary.extract || "A live random Wikipedia page, pinned to the rolled cell.", loc: "Wikipedia", source: "wikipedia", link: (summary.content_urls && summary.content_urls.desktop && summary.content_urls.desktop.page) || "", photoUrl: summary.thumbnail && summary.thumbnail.source };
+      } catch (err) {
+        say("Offline — random grid cell.");
+        return gridOnly(mode);
+      }
+    }
+    paintSaved();
+
     // ========== STATE ==========
     let luckyMode = "place";
     let secFilter = "present";
@@ -731,11 +932,28 @@
     let lastRenderState = null; // { tripType, sLat, sLon, startText, target } or { ..., targets } for loop — feeds re-roll/share
 
     // Init map
-    mainMap = L.map("mainMap").setView([20, 0], 2);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap", maxZoom: 18
-    }).addTo(mainMap);
-    mainMap.on("moveend zoomend", () => { mapInteracted = true; });
+    const grid = TripGrid.createGridGlobe(document.getElementById("mainMap"));
+    mainMap = {
+      _grid: grid,
+      getBounds: () => grid.bounds(),
+      getCenter: () => ({ lat: (grid.bounds().getSouth()+grid.bounds().getNorth())/2, lng: (grid.bounds().getWest()+grid.bounds().getEast())/2 }),
+      setView(latlng) {
+        const lat = Array.isArray(latlng) ? latlng[0] : latlng.lat;
+        const lon = Array.isArray(latlng) ? latlng[1] : (latlng.lng ?? latlng.lon);
+        grid.focus(lat, lon);
+      },
+      invalidateSize() {},
+      on(ev, fn) { grid.on(ev, fn); },
+      addLayer(layer) {
+        if (layer && layer.getLatLng) {
+          const ll = layer.getLatLng();
+          grid.pin(ll.lat, ll.lng);
+        }
+        return this;
+      }
+    };
+    mainMap.on("moveend", () => { mapInteracted = true; });
+    mainMap.on("zoomend", () => { mapInteracted = true; });
 
     // Resize handle (sideways) — this genuinely changes how much geographic
     // area is visible, and therefore how much area gets searched.
@@ -752,7 +970,7 @@
       let newW = e.clientX - rect.left;
       newW = Math.max(280, Math.min(newW, window.innerWidth - 40));
       wrap.style.width = newW + "px";
-      mainMap.invalidateSize();
+      if (mainMap.invalidateSize) mainMap.invalidateSize();
     });
     window.addEventListener("mouseup", () => { resizing = false; });
 
@@ -887,6 +1105,8 @@
       document.getElementById("routes").innerHTML = "";
       document.getElementById("rerollRow").style.display = "none";
       document.getElementById("result").classList.add("visible");
+      rememberRoll(target);
+      attachWiki(target);
       document.getElementById("result").scrollIntoView({ behavior: "smooth" });
     }
 
@@ -1077,6 +1297,8 @@
       document.getElementById("shareBtn").style.display = ""; // share is supported for every single-target trip type
 
       document.getElementById("result").classList.add("visible");
+      rememberRoll(target);
+      attachWiki(target);
       document.getElementById("result").scrollIntoView({ behavior: "smooth" });
       // #result is display:none until the line above, so Leaflet measured a
       // 0×0 container when the map was created — without this it renders as
@@ -1124,6 +1346,8 @@
       document.getElementById("shareBtn").style.display = "none"; // not supported for loops yet
 
       document.getElementById("result").classList.add("visible");
+      rememberRoll(target);
+      attachWiki(target);
       document.getElementById("result").scrollIntoView({ behavior: "smooth" });
       requestAnimationFrame(() => requestAnimationFrame(() => resultMap.invalidateSize()));
     }
@@ -1181,13 +1405,8 @@
             : await TripSearchEngine.fetchRandomTargets(mainMap, luckyMode, secFilter, keyword, stops, setStatus);
 
           if (!found || !found.targets || found.targets.length === 0) {
-            setStatus("");
-            showPlainMessage(
-              "No luck this time",
-              luckyMode === "viral"
-                ? "Nothing trending on Wikipedia right now has a map location. Try again later or pick a different mode."
-                : "No matching real places turned up nearby for a loop, and the live news fallback came up empty too. Try a different area, mode or filter."
-            );
+            const spare = await liveOrGrid(luckyMode, keyword, setStatus);
+            renderLoopResult([spare], { widened: true, sLat, sLon, startText });
             return;
           }
 
@@ -1205,15 +1424,8 @@
           : await TripSearchEngine.fetchRandomTarget(mainMap, luckyMode, secFilter, keyword, setStatus);
 
         if (!found) {
-          setStatus("");
-          showPlainMessage(
-            "No luck this time",
-            luckyMode === "news"
-              ? "Couldn't get a live headline just now (the free news API may be busy). Try again in a few seconds."
-              : luckyMode === "viral"
-              ? "Nothing trending on Wikipedia right now has a map location. Try again later or pick a different mode."
-              : "No matching real places turned up nearby, and the live news fallback came up empty too. Try a different area, mode or filter."
-          );
+          const spare = await liveOrGrid(luckyMode, keyword, setStatus);
+          renderTarget(spare, { widened: spare.source !== "grid", sLat, sLon, tripType, startText });
           return;
         }
 
@@ -2119,7 +2331,104 @@
       render();
     })();
   </script>
+  <aside id="dashPanel"></aside>
+  <button class="sf-ptab side-tab side-tab--right" type="button" data-panel-toggle="dashboard"><span class="sf-pt-icon"></span><span class="sf-pt-label" data-closed="📌 Dashboard"></span></button>
+</div>
 <script src="js/panel-toggle.js"></script>
+<script src="js/inventory-panel.js"></script>
+<script src="js/dashboard-panel.js"></script>
+<script src="js/pubcrawl.js"></script>
+
+<script>
+// Right-click explanation for every button ("rxplanation")
+(function() {
+  const explanations = {
+    'pcGps': 'Use your current location as the starting point for the pub crawl.',
+    'pcAddStep': 'Add another stop to your pub crawl route (up to 10 steps).',
+    'pcRoll': 'Randomly generate a pub crawl matching your step types and filters.',
+    'pcReroll': 'Re-generate the entire crawl with new random places.',
+    'gpsBtn': 'Set the start point using your device GPS location.',
+    'mapPickBtn': 'Click on the map to choose a custom starting location.',
+    'startRandomBtn': 'Pick a completely random starting point on Earth.',
+    'keywordRandomBtn': 'Generate a random search keyword for the target.',
+    'go': 'Run the lucky search with your current settings to find a random place or event.',
+    'rerollRoutesBtn': 'Generate new route options to the target.',
+    'rerollTargetBtn': 'Find a new random target instead of the current one.',
+    'shareBtn': 'Copy a shareable link to this exact lucky result.',
+    'rvuAdd': 'Add a new box to the RudVentur Universe map.',
+    'rvuEdit': 'Edit the selected box (name, color, link).',
+    'rvuDelete': 'Delete the selected box.',
+    'rvuReset': 'Reset the universe map to the default layout.',
+    'ltbAddDay': 'Add a new day card to the Living Trip Board.',
+    'ltbDeleteDay': 'Delete the currently selected day and its contents.',
+    'rvuCancel': 'Cancel editing and close the dialog.',
+    'rvuSave': 'Save the changes to the selected box.'
+  };
+
+  function getExplanation(btn) {
+    if (btn.id && explanations[btn.id]) return explanations[btn.id];
+    const text = (btn.textContent || '').trim().replace(/\s+/g, ' ');
+    const aria = btn.getAttribute('aria-label') || '';
+    const title = btn.title || '';
+    if (title) return title;
+    if (aria) return aria;
+    if (btn.classList.contains('lucky-btn')) return `Switch to "${text}" lucky mode.`;
+    if (btn.classList.contains('sec-btn')) return `Filter results to the ${text.toLowerCase()}.`;
+    if (btn.classList.contains('pc-mini')) {
+      if (text === '▲') return 'Move this step up in the crawl order.';
+      if (text === '▼') return 'Move this step down in the crawl order.';
+      if (text === '✕') return 'Remove this step from the crawl.';
+    }
+    if (btn.classList.contains('body-box')) return `Manage items for your ${text.split(' ')[1] || 'body'} slot.`;
+    if (text.includes('Add item')) return 'Add a new item to this bag or slot.';
+    if (text.includes('Bin')) return 'Delete or bin this luggage/item.';
+    if (text.includes('Switch')) return 'Switch this bag between on-body and stationary mode.';
+    if (text.includes('New luggage')) return 'Create a new luggage bag.';
+    if (text === 'Go') return 'Search for places near the entered location.';
+    if (text.includes('Download')) return 'Download the RudVentur progressive web app.';
+    if (text === 'R') return 'Open RUDVENTUR view and display options.';
+    if (text.includes('Full Screen') || text.includes('Panoramic') || text.includes('Normal')) return `Switch to ${text} display mode.`;
+    if (text.includes('Settings')) return 'Open settings for the current view.';
+    if (text === 'New') return 'Create something new in this panel.';
+    return `Button: ${text || 'action'}. Right-click shows this explanation.`;
+  }
+
+  let popup = null;
+  function showExplanation(btn, x, y) {
+    if (!popup) {
+      popup = document.createElement('div');
+      popup.id = 'btn-explanation';
+      popup.style.cssText = 'position:fixed;z-index:9999;background:#1a1d24;color:#e8eaed;border:1px solid #00d4ff;border-radius:8px;padding:10px 14px;max-width:280px;font-size:0.85rem;box-shadow:0 4px 20px rgba(0,0,0,0.5);pointer-events:none;line-height:1.4;';
+      document.body.appendChild(popup);
+    }
+    popup.textContent = getExplanation(btn);
+    const left = Math.min(x + 8, window.innerWidth - 300);
+    const top = Math.min(y + 8, window.innerHeight - 100);
+    popup.style.left = left + 'px';
+    popup.style.top = top + 'px';
+    popup.style.display = 'block';
+    clearTimeout(popup._hide);
+    popup._hide = setTimeout(() => { if (popup) popup.style.display = 'none'; }, 5000);
+  }
+
+  document.addEventListener('contextmenu', function(e) {
+    const btn = e.target.closest('button, a.pc-btn, [class*="btn"]');
+    if (!btn) return;
+    e.preventDefault();
+    showExplanation(btn, e.clientX, e.clientY);
+  });
+
+  // Small CSS safety for button visibility
+  const style = document.createElement('style');
+  style.textContent = `
+    button, .pc-btn, .lucky-btn, .sec-btn { position: relative; z-index: 1; }
+    button:focus, .pc-btn:focus { outline: 2px solid #00d4ff; outline-offset: 2px; }
+  `;
+  document.head.appendChild(style);
+})();
+</script>
+
 <script src="js/panels.js"></script>
 </body>
 </html>
+

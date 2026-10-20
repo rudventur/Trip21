@@ -2,48 +2,51 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Trip21 · RudVentur</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="/RudVentur.com/embed/apple-touch-icon.png">
-<style>
-  :root { --bg:#0b0d10; --fg:#e8e6df; --dim:#8a8f98; --card:#14181d; --line:#262c34; --accent:#ffb000; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 ui-monospace, Menlo, Consolas, monospace; }
-  main { max-width:880px; margin:0 auto; padding:40px 16px; }
-  h1 { margin:0 0 4px; font-size:28px; color:var(--accent); }
-  p.sub { margin:0 0 32px; color:var(--dim); }
-  .grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
-  a.card { display:block; padding:20px; background:var(--card); border:1px solid var(--line); border-radius:10px; color:inherit; text-decoration:none; }
-  a.card:hover, a.card:focus-visible { border-color:var(--accent); outline:none; }
-  a.card h2 { margin:0 0 6px; font-size:18px; }
-  a.card p { margin:0; color:var(--dim); font-size:14px; }
-  footer { margin-top:40px; color:var(--dim); font-size:13px; }
-  footer a { color:var(--accent); }
-</style>
+<link rel="stylesheet" href="css/start.css">
+<script src="https://rudventur.github.io/RudVentur.com/embed/rvView.js"></script>
+<script src="trip21-view.js" defer></script>
 </head>
 <body>
 <main>
-  <h1>Trip21</h1>
-  <p class="sub">One home for the RudVentur web apps.</p>
+  <header>
+    <h1 data-rv-logo title="Click for full screen and view options">Trip21</h1>
+    <p class="sub">One home for the RudVentur web apps.</p>
+  </header>
   <div class="grid">
     <a class="card" href="rudTrip20/">
-      <h2>🎲 rudTrip20</h2>
+      <span class="icon" aria-hidden="true">🎲</span>
+      <h2>rudTrip20</h2>
       <p>Feeling Lucky: roll a live target, get a story-line trip on a globe.</p>
     </a>
+    <a class="card" href="rudTrip20/globe.html">
+      <span class="icon" aria-hidden="true">🌍</span>
+      <h2>Trip globe</h2>
+      <p>The globe: tick continents, roll a live trip, travel together in a group.</p>
+    </a>
     <a class="card" href="map-merger-venti/">
-      <h2>🗺️ ArtSpace City</h2>
+      <span class="icon" aria-hidden="true">🗺️</span>
+      <h2>ArtSpace City</h2>
       <p>The map: 9 vehicles, live weather, art spaces, lost pets.</p>
     </a>
     <a class="card" href="cheese-ouiji-empire/trip-bandit.html">
-      <h2>🎰 Trip Bandit</h2>
+      <span class="icon" aria-hidden="true">🎰</span>
+      <h2>Trip Bandit</h2>
       <p>Gamble the target: spin the reels, then the globe rolls a real trip from them.</p>
     </a>
     <a class="card" href="cheese-ouiji-empire/">
-      <h2>🧀 Cheese Ouiji Empire</h2>
+      <span class="icon" aria-hidden="true">🧀</span>
+      <h2>Cheese Ouiji Empire</h2>
       <p>Bandit and the popcorn window: camera, drawing, movie maker.</p>
     </a>
   </div>
-  <footer>Part of <a href="https://rudventur.com">rudventur.com</a></footer>
+  <footer>Part of <a href="https://rudventur.com">rudventur.com</a> · click the Trip21 title for full screen</footer>
 </main>
 </body>
 </html>

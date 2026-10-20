@@ -311,11 +311,15 @@ function focusFirstMatch() {
 function isPhone() { return PHONE.matches; }
 function roots() { return { lp: document.getElementById('lpRoot'), rp: document.getElementById('rpRoot') }; }
 
-function setPanelOpen(side, open) {
+// opts.restore: setting the starting state, not a choice to remember.
+function setPanelOpen(side, open, opts) {
   const { lp, rp } = roots();
   const me = side === 'left' ? lp : rp;
   if (!me) return;
   me.classList.toggle(side === 'left' ? 'lp-collapsed' : 'rp-collapsed', !open);
+  // Wide screens remember each column (js/panel-toggle.js, key sf_panels).
+  // Phones always start with both sheets closed, so nothing is saved there.
+  if (!isPhone() && !(opts && opts.restore) && window.sfPanels) sfPanels.save(side, !!open);
   // On a phone only one sheet is open at a time.
   if (open && isPhone()) {
     const other = side === 'left' ? rp : lp;
@@ -337,10 +341,8 @@ function layout() {
   document.body.classList.toggle('sf-phone', phone);
   document.body.classList.toggle('sf-sheet-left', phone && lpOpen);
   document.body.classList.toggle('sf-sheet-right', phone && rpOpen && !lpOpen);
-  const lt = document.getElementById('lpToggleBtn');
-  const rt = document.getElementById('rpToggleBtn');
-  if (lt) lt.textContent = lpOpen ? '◀' : '▶';
-  if (rt) rt.textContent = rpOpen ? '▶' : '◀';
+  // Edge tabs and header buttons: chevron, "hide"/"show", title and aria state.
+  if (window.sfPanels) { sfPanels.sync('left'); sfPanels.sync('right'); }
   // How much of each side the panels cover, so floating buttons sit beside them.
   rootStyle.setProperty('--lp-edge', (!phone && lp) ? Math.round(lp.getBoundingClientRect().right) + 'px' : '0px');
   rootStyle.setProperty('--rp-edge', (!phone && rp) ? Math.round(window.innerWidth - rp.getBoundingClientRect().left) + 'px' : '0px');
@@ -359,10 +361,11 @@ document.addEventListener('click', e => {
 
 function applyScreenSize() {
   // Phones start with both sheets closed so the map is visible; wide screens
-  // start with both columns open (as before).
+  // start with both columns the way they were left (open the first time).
   const phone = isPhone();
-  setPanelOpen('left', !phone);
-  setPanelOpen('right', !phone);
+  const remembered = side => window.sfPanels ? sfPanels.saved(side, true) : true;
+  setPanelOpen('left', !phone && remembered('left'), { restore: true });
+  setPanelOpen('right', !phone && remembered('right'), { restore: true });
 }
 if (PHONE.addEventListener) PHONE.addEventListener('change', applyScreenSize);
 else if (PHONE.addListener) PHONE.addListener(applyScreenSize);

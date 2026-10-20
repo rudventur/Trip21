@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
-//  panel-drag.js — Drag Manager for Snout First
-//  Makes map pet pins draggable into left/right panels
-//  Also adds service pins (vets/food) to map when requested
+//  panel-drag.js — service pins for Snout First
+//  Adds service pins (vets / food banks) to the map when requested.
+//  (Dragging pets onto the dashboard moved to js/snout-first-service.js.)
 //  Additive only
 // ═══════════════════════════════════════════════════════════════
 
@@ -60,167 +60,11 @@ function drawServicePins() {
   });
 }
 
-// ── Canvas drag — make pet pins draggable ──
-// We intercept pointerdown on the canvas and check if it hits a pet
-// If it does and held for 300ms without moving → start drag
-
-let dragState = null;
-const DRAG_HOLD_MS = 300;
-const DRAG_MOVE_THRESHOLD = 8;
-
-function initCanvasDrag() {
-  const canvas = document.getElementById('snoutMap');
-  if (!canvas) return;
-
-  canvas.addEventListener('pointerdown', onCanvasPointerDown);
-  canvas.addEventListener('pointermove', onCanvasPointerMove);
-  canvas.addEventListener('pointerup', onCanvasPointerUp);
-  canvas.addEventListener('pointercancel', cancelDrag);
-
-  // Drag-over on panels
-  const leftContent = document.getElementById('lpContent');
-  const rightContent = document.getElementById('rpContent');
-
-  [leftContent, rightContent].forEach(el => {
-    if (!el) return;
-    el.addEventListener('dragover', e => e.preventDefault());
-  });
-}
-
-function onCanvasPointerDown(e) {
-  if (typeof petAtScreen !== 'function') return;
-  const petIdx = petAtScreen(e.clientX, e.clientY);
-  if (petIdx < 0) return;
-
-  dragState = {
-    petIdx,
-    startX: e.clientX, startY: e.clientY,
-    moved: false,
-    dragging: false,
-    ghost: null,
-    timer: setTimeout(() => {
-      if (dragState && !dragState.moved) startPetDrag(dragState);
-    }, DRAG_HOLD_MS)
-  };
-}
-
-function onCanvasPointerMove(e) {
-  if (!dragState) return;
-  const dx = Math.abs(e.clientX - dragState.startX);
-  const dy = Math.abs(e.clientY - dragState.startY);
-  if (dx > DRAG_MOVE_THRESHOLD || dy > DRAG_MOVE_THRESHOLD) {
-    dragState.moved = true;
-    if (!dragState.dragging) {
-      clearTimeout(dragState.timer);
-    }
-  }
-  if (dragState.dragging && dragState.ghost) {
-    dragState.ghost.style.left = (e.clientX + 12) + 'px';
-    dragState.ghost.style.top  = (e.clientY + 12) + 'px';
-    // Highlight panels on hover
-    highlightDropTarget(e.clientX, e.clientY);
-  }
-}
-
-function onCanvasPointerUp(e) {
-  if (!dragState) return;
-  clearTimeout(dragState.timer);
-  if (dragState.dragging) {
-    dropPetOnPanel(e.clientX, e.clientY, dragState.petIdx);
-    removeGhost();
-  }
-  dragState = null;
-}
-
-function cancelDrag() {
-  if (dragState) {
-    clearTimeout(dragState.timer);
-    removeGhost();
-    dragState = null;
-  }
-}
-
-function startPetDrag(state) {
-  state.dragging = true;
-  if (typeof S === 'undefined') return;
-  const pet = S.pets[state.petIdx];
-  if (!pet) return;
-
-  const em = (typeof SPECIES_EM !== 'undefined' ? SPECIES_EM[pet.species] : '') || '🐾';
-
-  // Ghost element
-  const ghost = document.createElement('div');
-  ghost.id = 'sfDragGhost';
-  ghost.style.cssText = `
-    position:fixed; z-index:9999; pointer-events:none;
-    background:rgba(26,18,10,0.95); border:2px solid #cc8833;
-    border-radius:10px; padding:5px 10px;
-    font-family:'Bubblegum Sans',cursive; color:#ffcc66; font-size:.85rem;
-    box-shadow:0 4px 16px rgba(0,0,0,0.5);
-    left:${state.startX + 12}px; top:${state.startY + 12}px;
-    white-space:nowrap;
-  `;
-  ghost.textContent = `${em} ${pet.name}`;
-  document.body.appendChild(ghost);
-  state.ghost = ghost;
-
-  if (typeof toast === 'function') toast(`${em} Drag ${pet.name} to a panel!`);
-}
-
-function removeGhost() {
-  const g = document.getElementById('sfDragGhost');
-  if (g) g.remove();
-  // Remove highlights
-  document.querySelectorAll('.sf-drop-highlight').forEach(el => {
-    el.classList.remove('sf-drop-highlight');
-  });
-}
-
-function highlightDropTarget(x, y) {
-  const lp = document.getElementById('lpRoot');
-  const rp = document.getElementById('rpRoot');
-
-  [lp, rp].forEach(panel => {
-    if (!panel) return;
-    const rect = panel.getBoundingClientRect();
-    const over = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-    panel.style.boxShadow = over ? '0 0 20px rgba(136,204,68,0.4)' : '';
-  });
-}
-
-function dropPetOnPanel(x, y, petIdx) {
-  if (typeof S === 'undefined') return;
-  const pet = S.pets[petIdx];
-  if (!pet) return;
-
-  const lp = document.getElementById('lpRoot');
-  const rp = document.getElementById('rpRoot');
-
-  let dropped = false;
-
-  if (lp) {
-    const rect = lp.getBoundingClientRect();
-    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-      // Dropped on the dashboard: make sure it is on it (puts it back if it was taken off)
-      if (window.sfDash) sfDash.putBack(pet);
-      if (typeof lpRefresh === 'function') lpRefresh();
-      if (typeof toast === 'function') toast(`🐾 ${pet.name} is on your dashboard`);
-      dropped = true;
-    }
-  }
-
-  if (!dropped && rp) {
-    const rect = rp.getBoundingClientRect();
-    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-      // Every pet is always in the lists already
-      if (typeof toast === 'function') toast(`🐾 ${pet.name} is in the lists`);
-      dropped = true;
-    }
-  }
-
-  if (lp) lp.style.boxShadow = '';
-  if (rp) rp.style.boxShadow = '';
-}
+// ── Pet pins → dashboard ──
+// Carrying a pet pin (or a list tile) onto the dashboard now lives in the
+// SnoutFirst pet service, js/snout-first-service.js. The old version here
+// listened on the map only, so the map panned under the pet and touch
+// screens cancelled the drag.
 
 // ── Patch RAF to draw service pins ──
 const _raf0 = window.requestAnimationFrame.bind(window);
@@ -240,10 +84,7 @@ function patchRAF() {
 // ── Init (wait for DOM + canvas) ──
 function init() {
   // Wait a tick for canvas to exist
-  setTimeout(() => {
-    initCanvasDrag();
-    patchRAF();
-  }, 800);
+  setTimeout(patchRAF, 800);
 }
 
 if (document.readyState === 'loading') {

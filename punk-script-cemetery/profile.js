@@ -14,7 +14,7 @@
   document.getElementById('profile-type-label').textContent = typeInfo.label;
 
   // ─── Emoji picker ───
-  const EMOJIS = ['\u{1F600}','\u{1F60E}','\u{1F920}','\u{1F973}','\u{1F47B}','\u{1F916}','\u{1F9E0}','\u{1F43E}','\u{1F451}','\u{1F3E2}','\u{1F525}','\u26A1','\u{1F480}','\u{1F308}','\u{1F3AE}','\u{1F3B5}','\u{1F680}','\u{1F319}','\u{1F355}','\u{1F48E}','\u{1F98A}','\u{1F431}','\u{1F436}','\u{1F981}','\u{1F438}','\u{1F33B}','\u{1F344}','\u{1F3AF}','\u{1F9E9}','\u2728','\u{1FAA6}'];
+  const EMOJIS = ['😀','😎','🤠','🥳','👻','🤖','🧠','🐾','👑','🏢','🔥','⚡','💀','🌈','🎮','🎵','🚀','🌙','🍕','💎','🦊','🐱','🐶','🦁','🐸','🌻','🍄','🎯','🧩','✨','🪦'];
 
   const emojiGrid = document.getElementById('emoji-grid');
   const avatarPreview = document.getElementById('avatar-preview');
@@ -24,12 +24,12 @@
   const emojiPanel = document.getElementById('emoji-panel');
   const urlPanel = document.getElementById('url-panel');
 
-  let selectedEmoji = entityType === 'cemetery' ? '\u{1FAA6}' : '\u{1F600}';
+  let selectedEmoji = entityType === 'cemetery' ? '🪦' : '😀';
   let avatarMode = 'emoji';
 
   // Set initial preview for cemetery
   if (entityType === 'cemetery') {
-    avatarPreview.textContent = '\u{1FAA6}';
+    avatarPreview.textContent = '🪦';
   }
 
   EMOJIS.forEach(function(em) {
@@ -76,7 +76,7 @@
         avatarPreview.appendChild(img);
       }
       img.src = url;
-      img.onerror = function() { avatarPreview.textContent = '\u274C'; img.remove(); };
+      img.onerror = function() { avatarPreview.textContent = '❌'; img.remove(); };
     } else {
       avatarPreview.textContent = selectedEmoji;
       const img = avatarPreview.querySelector('img');
@@ -97,7 +97,7 @@
       { id: 'commands', label: 'Commands', placeholder: 'commands it responds to' }
     ],
     ai: [
-      { id: 'model', label: 'Model / Version', placeholder: 'optional \u2014 e.g. GPT-4, Claude, etc.' },
+      { id: 'model', label: 'Model / Version', placeholder: 'optional — e.g. GPT-4, Claude, etc.' },
       { id: 'capabilities', label: 'Capabilities', placeholder: 'what can this AI do?' },
       { id: 'operator', label: 'Who runs it', placeholder: 'who operates this AI?' }
     ],
@@ -117,9 +117,11 @@
       { id: 'how_to_join', label: 'How to get listed', placeholder: 'how can someone get added?' }
     ],
     cemetery: [
+      { id: 'birth_date', label: 'Birth date', placeholder: 'YYYY-MM-DD or year' },
+      { id: 'death_date', label: 'Death date', placeholder: 'YYYY-MM-DD or year (or “still living”)' },
+      { id: 'year_of_rest', label: 'Year of eternal rest', placeholder: 'since when? (if different)' },
       { id: 'location', label: 'Cemetery name & location', placeholder: 'where do you rest?' },
       { id: 'epitaph', label: 'Epitaph', placeholder: 'what does your stone say?' },
-      { id: 'year_of_rest', label: 'Year of eternal rest', placeholder: 'since when?' },
       { id: 'famous_neighbours', label: 'Famous neighbours', placeholder: 'who else is there?' },
       { id: 'unfinished_business', label: 'Unfinished business', placeholder: 'what still needs doing?' }
     ]
@@ -180,7 +182,7 @@
       avatarUrlInput.value = data.avatarUrl;
       updateAvatarFromUrl();
     } else {
-      selectedEmoji = data.avatarEmoji || (entityType === 'cemetery' ? '\u{1FAA6}' : '\u{1F600}');
+      selectedEmoji = data.avatarEmoji || (entityType === 'cemetery' ? '🪦' : '😀');
       avatarPreview.textContent = selectedEmoji;
       emojiGrid.querySelectorAll('.emoji-option').forEach(function(e) {
         e.classList.toggle('selected', e.textContent === selectedEmoji);
@@ -201,8 +203,8 @@
     }
 
     const avatar = data.avatarMode === 'url' && data.avatarUrl
-      ? '<img src="' + data.avatarUrl + '" onerror="this.parentNode.textContent=\'\u274C\';this.remove()">'
-      : (data.avatarEmoji || '\u{1F600}');
+      ? '<img src="' + data.avatarUrl + '" onerror="this.parentNode.textContent=\'❌\';this.remove()">'
+      : (data.avatarEmoji || '😀');
 
     const typeI = ENTITY_TYPES[data.type] || ENTITY_TYPES.human;
     const badgeClass = data.type === 'cemetery' ? ' cemetery-badge' : '';
@@ -266,13 +268,13 @@
     }
     saveProfile(myUID, data).then(function() {
       cacheProfile(myUID, data);
-      showToast(entityType === 'cemetery' ? 'rest in peace. saved.' : "that's you. saved.");
+      showToast(entityType === 'cemetery' ? 'memorial saved. rest in peace.' : "that's you. saved.");
       document.getElementById('share-section').style.display = 'block';
       updateShareLink();
     }).catch(function() {
       // Save to cache anyway for offline
       cacheProfile(myUID, data);
-      showToast('saved locally \u2014 firebase offline');
+      showToast('saved locally — firebase offline');
     });
   };
 

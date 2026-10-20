@@ -29,16 +29,18 @@ function injectLeftPanel() {
       box-shadow: 0 0 18px rgba(255,30,30,0.25);
     }
 
+    /* Edge tab: the shared .sf-ptab look (js/panel-toggle.js), placed on the right edge */
     .lp-toggle {
-      position: absolute; top: 50%; right: -13px;
+      position: absolute; top: 50%; right: -22px;
       transform: translateY(-50%);
-      width: 13px; height: 44px;
-      background: #cc8833; border-radius: 0 7px 7px 0;
-      cursor: pointer; display: flex; align-items: center;
-      justify-content: center; z-index: 955;
-      font-size: .65rem; color: #1a120a; user-select: none;
+      width: 22px; height: 64px;
+      border-radius: 0 8px 8px 0; z-index: 955;
     }
     .lp-root.lost-mode .lp-toggle { background: #ff2222; }
+    /* A pet being carried (js/snout-first-service.js): the whole dashboard is the drop target */
+    .sf-dragging .lp-root { box-shadow: 0 0 0 2px rgba(136,204,68,0.45) inset; }
+    .lp-root.sf-drop-over { box-shadow: 0 0 0 3px #88cc44 inset, 0 0 22px rgba(136,204,68,0.45); }
+    .lp-pet-tile.sf-flash { border-color: #88cc44; box-shadow: 0 0 12px rgba(136,204,68,0.5); }
 
     .lp-inner {
       flex: 1; overflow: hidden; display: flex;
@@ -294,7 +296,7 @@ function injectLeftPanel() {
       transition: all .2s; margin: 0;
       font-family: 'VT323', monospace;
     }
-    /* only takes space while a pet from the lists is being dragged */
+    /* only takes space while a pet is being carried; it is a hint, the whole panel takes the drop */
     .sf-dragging .lp-drop-zone {
       height: auto; padding: 12px; margin: 4px 0;
       border-color: rgba(136,204,68,0.35); color: rgba(136,204,68,0.8);
@@ -343,6 +345,7 @@ function injectLeftPanel() {
         border-right: 1px solid rgba(204,136,51,0.4);
       }
       .lp-root.lp-collapsed .lp-inner { display: none; }
+      /* the header (sheet tab) is always visible on phones, so no edge tab */
       .lp-toggle { display: none; }
       .lp-tab { font-size: .85rem; padding: 7px 10px; }
       .lp-tile-btn, .lp-off { font-size: .8rem; padding: 4px 8px; }
@@ -361,9 +364,10 @@ function injectLeftPanel() {
   </div>
 
   <div class="lp-root" id="lpRoot">
-    <div class="lp-toggle" id="lpToggleBtn" title="Show or hide the dashboard">◀</div>
+    <button class="lp-toggle sf-ptab" id="lpToggleBtn" type="button" data-panel-toggle="left"><span class="sf-pt-icon">◀</span></button>
     <div class="sf-phead">
       <button class="sf-ph-btn sf-ph-left" type="button" data-sheet="left">📋 DASHBOARD<b data-count="dash"></b></button>
+      <button class="sf-ptoggle" type="button" data-panel-toggle="left"><span class="sf-pt-icon">◀</span><span class="sf-pt-label">hide</span></button>
       <button class="sf-ph-btn sf-ph-right" type="button" data-sheet="right">📚 LISTS<b data-count="all"></b></button>
       <button class="sf-ph-close" type="button" data-sheet="close" title="Close">▼</button>
     </div>
@@ -555,12 +559,20 @@ function lpMountTabMinimap() {
 }
 
 // ── Toggle ──
-function lpToggle() {
-  const root = document.getElementById('lpRoot');
-  const open = root.classList.contains('lp-collapsed');
-  if (window.sfDash) { sfDash.setPanelOpen('left', open); return; }
-  root.classList.toggle('lp-collapsed', !open);
-  document.getElementById('lpToggleBtn').textContent = open ? '◀' : '▶';
+// The edge tab and the header button both carry data-panel-toggle="left";
+// js/panel-toggle.js handles the click, js/dashboard.js does the opening
+// (side column on wide screens, bottom sheet on phones) and remembers it.
+function lpRegisterToggle() {
+  if (!window.sfPanels) return;
+  sfPanels.register({
+    id: 'left', el: '#lpRoot', label: 'the dashboard',
+    side: () => (window.sfDash && sfDash.isPhone()) ? 'bottom' : 'left', remember: false,
+    read: () => window.sfDash ? sfDash.isPanelOpen('left') : !document.getElementById('lpRoot').classList.contains('lp-collapsed'),
+    apply: open => {
+      if (window.sfDash) sfDash.setPanelOpen('left', open);
+      else document.getElementById('lpRoot').classList.toggle('lp-collapsed', !open);
+    }
+  });
 }
 
 // ── Tab switch ──
@@ -632,7 +644,7 @@ function lpRenderPets() {
   const q = D ? D.query() : '';
   const summary = `<div class="lp-dash-sum">${onDash.length} on your dashboard` +
     (off ? ` · <span class="lp-link" data-act="see-off">${off} taken off, see Lists</span>` : '') + '</div>';
-  const dropZone = '<div class="lp-drop-zone" id="lpDropZone">drop a pet here to put it back on the dashboard</div>';
+  const dropZone = '<div class="lp-drop-zone" id="lpDropZone">drop the pet anywhere on the dashboard</div>';
   let body;
   if (!onDash.length) {
     body = '<div class="sf-empty" id="lpDashEmpty">Your dashboard is empty.<br>Every pet is still on the map and in Lists. Use "+ back on dashboard" there to put one back.</div>';
@@ -910,21 +922,8 @@ window.lpMarkFound = function(i) {
 
 // ── Bind content interactions ──
 function lpBindContent() {
-  // Drop zone: a pet dragged from the lists on the right goes back on the dashboard.
-  // Only pets that already exist can be dropped; nothing new is created here.
-  const dz = document.getElementById('lpDropZone');
-  if (dz) {
-    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
-    dz.addEventListener('dragleave', () => dz.classList.remove('active'));
-    dz.addEventListener('drop', e => {
-      e.preventDefault();
-      dz.classList.remove('active');
-      const pet = window.sfDash ? sfDash.byKey(e.dataTransfer.getData('text/sf-pet-key')) : null;
-      if (!pet) return;
-      sfDash.putBack(pet);
-      if (typeof toast === 'function') toast(`🐾 ${pet.name} is back on your dashboard`);
-    });
-  }
+  // Dropping a pet on the dashboard is handled for the whole panel by the
+  // SnoutFirst pet service (js/snout-first-service.js).
 
   // Social buttons after render
   if (lpActiveTab === 'lost') {
@@ -965,8 +964,8 @@ function bindAddBtn() {
 function init() {
   injectLeftPanel();
 
-  // Toggle
-  document.getElementById('lpToggleBtn').addEventListener('click', lpToggle);
+  // Toggle (edge tab + header button)
+  lpRegisterToggle();
 
   // Tab bar clicks
   document.getElementById('lpTabBar').addEventListener('click', e => {

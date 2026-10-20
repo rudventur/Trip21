@@ -43,14 +43,12 @@ function injectRightPanel() {
       box-shadow: 0 0 18px rgba(255,30,30,0.2);
     }
 
+    /* Edge tab: the shared .sf-ptab look (js/panel-toggle.js), placed on the left edge */
     .rp-toggle {
-      position: absolute; top: 50%; left: -13px;
+      position: absolute; top: 50%; left: -22px;
       transform: translateY(-50%);
-      width: 13px; height: 44px;
-      background: #cc8833; border-radius: 7px 0 0 7px;
-      cursor: pointer; display: flex; align-items: center;
-      justify-content: center; z-index: 955;
-      font-size: .65rem; color: #1a120a; user-select: none;
+      width: 22px; height: 64px;
+      border-radius: 8px 0 0 8px; z-index: 955;
     }
     .rp-root.lost-mode .rp-toggle { background: #ff2222; }
     .rp-root.rp-collapsed .rp-inner { opacity: 0; pointer-events: none; }
@@ -106,6 +104,8 @@ function injectRightPanel() {
     .rp-pet-btns { display: flex; gap: 4px; margin-top: 5px; align-items: center; }
     .rp-pin-btn.add { border-color: rgba(136,204,68,0.5); color: #88cc44; background: rgba(136,204,68,0.1); }
     .rp-pin-btn.add:hover { background: rgba(136,204,68,0.2); }
+    /* list tiles can be carried onto the dashboard (js/snout-first-service.js) */
+    .rp-pet[data-key] { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     .rp-pet.dragging { opacity: .45; }
 
     /* Home tab */
@@ -296,6 +296,7 @@ function injectRightPanel() {
         border-left: 1px solid rgba(204,136,51,0.4);
       }
       .rp-root.rp-collapsed .rp-inner { display: none; }
+      /* the header (sheet tab) is always visible on phones, so no edge tab */
       .rp-toggle { display: none; }
       .rp-tab { font-size: .85rem; padding: 4px 9px; }
       .rp-pin-btn { font-size: .8rem; padding: 3px 8px; }
@@ -313,10 +314,11 @@ function injectRightPanel() {
   </style>
 
   <div class="rp-root" id="rpRoot">
-    <div class="rp-toggle" id="rpToggleBtn" title="Show or hide the lists">▶</div>
+    <button class="rp-toggle sf-ptab" id="rpToggleBtn" type="button" data-panel-toggle="right"><span class="sf-pt-icon">▶</span></button>
     <div class="sf-phead">
       <button class="sf-ph-btn sf-ph-left" type="button" data-sheet="left">📋 DASHBOARD<b data-count="dash"></b></button>
       <button class="sf-ph-btn sf-ph-right" type="button" data-sheet="right">📚 LISTS<b data-count="all"></b></button>
+      <button class="sf-ptoggle" type="button" data-panel-toggle="right"><span class="sf-pt-icon">▶</span><span class="sf-pt-label">hide</span></button>
       <button class="sf-ph-close" type="button" data-sheet="close" title="Close">▼</button>
     </div>
     <div class="rp-inner">
@@ -392,12 +394,19 @@ const CHARITIES_PL = [
 let rpActiveTab = 'all';
 const RP_OLD_TABS = { mypets: 'mine', family: 'friends' };   // names used before the lists
 function rpIsList(tab) { return !!(window.sfDash && sfDash.listById(tab)); }
-function rpToggle() {
-  const root = document.getElementById('rpRoot');
-  const open = root.classList.contains('rp-collapsed');
-  if (window.sfDash) { sfDash.setPanelOpen('right', open); return; }
-  root.classList.toggle('rp-collapsed', !open);
-  document.getElementById('rpToggleBtn').textContent = open ? '▶' : '◀';
+// Edge tab + header button carry data-panel-toggle="right" (js/panel-toggle.js);
+// js/dashboard.js does the opening and remembers it.
+function rpRegisterToggle() {
+  if (!window.sfPanels) return;
+  sfPanels.register({
+    id: 'right', el: '#rpRoot', label: 'the lists',
+    side: () => (window.sfDash && sfDash.isPhone()) ? 'bottom' : 'right', remember: false,
+    read: () => window.sfDash ? sfDash.isPanelOpen('right') : !document.getElementById('rpRoot').classList.contains('rp-collapsed'),
+    apply: open => {
+      if (window.sfDash) sfDash.setPanelOpen('right', open);
+      else document.getElementById('rpRoot').classList.toggle('rp-collapsed', !open);
+    }
+  });
 }
 
 function rpSwitchTab(tab) {
@@ -446,7 +455,7 @@ function rpPetEntry(p) {
   const mood = p.mood ? ' · ' + ((typeof MOOD_EM !== 'undefined' ? MOOD_EM[p.mood] : '') || '') + ' ' + escHtml(p.mood) : '';
   const tags = (Array.isArray(p.tags) ? p.tags : []).slice(0, 5)
     .map(t => `<span class="rp-ltag">${escHtml(t)}</span>`).join('');
-  return `<div class="rp-pet${off ? ' is-off' : ''}" data-key="${escHtml(D.key(p))}" draggable="true" title="Show ${escHtml(p.name)} on the map">
+  return `<div class="rp-pet${off ? ' is-off' : ''}" data-key="${escHtml(D.key(p))}" title="Show ${escHtml(p.name)} on the map. Drag it onto the dashboard (on a phone: hold, then drag).">
     <div class="rp-lname"><span class="rp-pet-name">${em} ${escHtml(p.name)}</span>${badge}</div>
     <div class="rp-laddr">${escHtml(p.breed || p.species || '')} · ${p.lost ? '🔴 LOST' : escHtml(p.status || 'home')}${mood}</div>
     ${tags ? `<div class="rp-pet-tags">${tags}</div>` : ''}
@@ -706,22 +715,8 @@ window.rpAddFood = function() {
 };
 
 // ── Drag a list entry onto the dashboard to put it back ──
-function rpBindListDrag() {
-  const el = document.getElementById('rpContent');
-  el.addEventListener('dragstart', e => {
-    const card = e.target.closest && e.target.closest('.rp-pet[data-key]');
-    if (!card) return;
-    e.dataTransfer.setData('text/sf-pet-key', card.getAttribute('data-key'));
-    e.dataTransfer.effectAllowed = 'move';
-    card.classList.add('dragging');
-    document.body.classList.add('sf-dragging');
-  });
-  el.addEventListener('dragend', e => {
-    const card = e.target.closest && e.target.closest('.rp-pet');
-    if (card) card.classList.remove('dragging');
-    document.body.classList.remove('sf-dragging');
-  });
-}
+// Handled by the SnoutFirst pet service (js/snout-first-service.js), which
+// binds the .rp-pet[data-key] tiles in #rpContent.
 
 // ── Helpers ──
 function rpTimeAgo(ts) {
@@ -747,14 +742,13 @@ window.rpSwitchTab = rpSwitchTab;
 // ── Init ──
 function init() {
   injectRightPanel();
-  document.getElementById('rpToggleBtn').addEventListener('click', rpToggle);
+  rpRegisterToggle();
   document.getElementById('rpTabBar').addEventListener('click', e => {
     const tab = e.target.closest('.rp-tab');
     if (!tab) return;
     rpSwitchTab(tab.dataset.rptab);
   });
   document.getElementById('rpContent').addEventListener('click', rpOnContentClick);
-  rpBindListDrag();
   rpRender();
   // Lists follow the pets, the search and the dashboard. Home, Vets and Food
   // are left alone (they have their own forms and searches).

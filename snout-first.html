@@ -8,7 +8,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Bubblegum+Sans&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#1a120a;font-family:'VT323',monospace;overflow:hidden;width:100vw;height:100vh;color:#ffcc66}
-canvas#snoutMap{position:fixed;inset:0;z-index:1}
+canvas#snoutMap{position:fixed;inset:0;z-index:1;touch-action:none}
 
 /* ── HUD ── */
 :root{--bar-h:50px;--sheet-h:62vh;--strip-h:40px}
@@ -41,6 +41,8 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
 
 /* ── STATS ── */
 .stats{position:fixed;top:calc(var(--bar-h) + 6px);left:calc(var(--lp-edge, 0px) + 10px);z-index:900;display:flex;flex-direction:column;gap:3px}
+.stats .sf-pbody{display:flex;flex-direction:column;gap:3px}
+.stats.sf-panel-collapsed .sf-pbody{display:none}
 .spill{background:rgba(26,18,10,0.9);border:1px solid rgba(204,136,51,0.2);border-radius:8px;padding:4px 8px;font-family:'VT323',monospace;font-size:.85rem;color:rgba(255,204,102,0.6);white-space:nowrap}
 .spill b{color:#88cc44}
 
@@ -92,8 +94,7 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
 /* ── SIDE PANEL (pack/trail) ── */
 .side-panel{position:fixed;top:var(--bar-h);left:0;bottom:0;width:280px;max-width:100vw;background:rgba(26,18,10,0.97);border-right:3px solid #cc8833;z-index:980;display:none;overflow-y:auto;padding:10px}
 .side-panel.show{display:block}
-.side-panel h3{font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:1rem;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
-.side-panel .close-btn{background:none;border:1px solid #cc8833;color:#cc8833;padding:2px 6px;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:.2rem;border-radius:4px}
+.side-panel>.sf-phead{margin:-10px -10px 8px;position:sticky;top:-10px;z-index:1;background:#221709}
 
 /* ── SNIFF (post) ── */
 .sniff{background:rgba(0,0,0,0.3);border:2px solid rgba(204,136,51,0.2);border-radius:12px;padding:10px;margin:6px 0}
@@ -142,10 +143,7 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
 #sfuCircle:hover{transform:scale(1.08) rotate(-4deg);box-shadow:0 0 26px rgba(204,136,51,0.55)}
 #sfuPanel{position:absolute;top:52px;right:0;width:280px;max-height:80vh;overflow-y:auto;background:rgba(26,18,10,0.98);border:3px solid #cc8833;border-radius:14px;padding:14px;box-shadow:0 4px 28px rgba(0,0,0,0.5)}
 #sfuPanel.sfu-hidden{display:none}
-.sfu-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(204,136,51,0.25)}
-.sfu-header strong{font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:1rem}
-.sfu-header button{background:none;border:1px solid #cc8833;color:#cc8833;font-size:.95rem;cursor:pointer;padding:2px 7px;border-radius:6px}
-.sfu-header button:hover{background:#cc8833;color:#1a120a}
+#sfuPanel>.sf-phead{margin:-14px -14px 10px;border-radius:11px 11px 0 0}
 #sfuClock{text-align:center;font-size:1.1rem;color:#ffcc66;font-weight:bold;margin-bottom:10px;padding:6px;background:rgba(255,204,102,0.05);border:1px solid rgba(255,204,102,0.25);border-radius:8px}
 #sfuPanel label{display:block;margin:8px 0 3px;font-size:.75rem;color:rgba(255,204,102,0.6);text-transform:uppercase;letter-spacing:1px}
 #sfuPanel input[type=text],#sfuPanel textarea{width:100%;background:rgba(0,0,0,0.4);color:#ffcc66;border:1.5px solid rgba(204,136,51,0.4);padding:6px 8px;font-family:'VT323',monospace;font-size:.9rem;border-radius:8px;outline:none}
@@ -180,8 +178,20 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
 .map-credit a{color:#ffcc66}
 .net-note{color:#ffcc66;cursor:help}
 
-/* ── PANEL HEADERS (dashboard on the left, lists on the right) ── */
+/* ── PANELS — one pattern everywhere (toggle logic and shared look: js/panel-toggle.js) ──
+   Every panel: a .sf-phead header with its name and a .sf-ptoggle hide/show button at the
+   end; when hidden, a .sf-ptab (or its header) brings it back; the choice is remembered.
+   Top bar · stats · dashboard (left) · lists (right) · Trail · Pack · useRbox. */
 .sf-phead{display:flex;align-items:center;gap:4px;padding:4px 8px;border-bottom:1.5px solid rgba(204,136,51,0.35);flex-shrink:0;background:rgba(204,136,51,0.06)}
+.stats>.sf-phead{gap:8px;padding:2px 4px 2px 8px;background:rgba(26,18,10,0.92);border:1px solid rgba(204,136,51,0.35);border-radius:8px}
+.stats>.sf-phead .sf-ptoggle{font-size:.8rem;padding:0 6px}
+.sf-ptab.sf-ptab-top{display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:1001;padding:2px 14px 3px;border-radius:0 0 10px 10px;box-shadow:0 2px 10px rgba(0,0,0,0.4)}
+body.sf-hidden-bar{--bar-h:0px}
+body.sf-hidden-bar .hud{display:none}
+body.sf-hidden-bar .sf-ptab.sf-ptab-top{display:flex}
+.hbtn.sf-pt-open{background:#cc8833;color:#1a120a}
+/* a pet being carried onto the dashboard (js/snout-first-service.js) */
+.sf-drag-ghost{position:fixed;z-index:9999;pointer-events:none;background:rgba(26,18,10,0.95);border:2px solid #88cc44;border-radius:10px;padding:5px 10px;font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:.9rem;box-shadow:0 4px 16px rgba(0,0,0,0.5);white-space:nowrap}
 .sf-ph-btn{background:none;border:none;color:#ffcc66;font-family:'Press Start 2P',monospace;font-size:.5rem;letter-spacing:1px;cursor:default;padding:3px 0;white-space:nowrap;text-align:left}
 .sf-ph-btn b{font-family:'VT323',monospace;font-size:.85rem;color:#88cc44;font-weight:normal;margin-left:4px;letter-spacing:0}
 .sf-ph-close{display:none;margin-left:auto;background:none;border:1px solid #cc8833;color:#cc8833;border-radius:6px;cursor:pointer;font-size:.8rem;padding:0 8px}
@@ -205,12 +215,17 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
   .spot-fab{bottom:calc(var(--strip-h) + 34px) !important}
   /* sheet tabs: closed = two half-width strips at the bottom; open = one sheet */
   .lp-root.lp-collapsed .sf-phead,.rp-root.rp-collapsed .sf-phead{display:flex;height:100%;justify-content:center}
-  .sf-phead{padding:0 8px;min-height:var(--strip-h)}
+  .lp-root .sf-phead,.rp-root .sf-phead{padding:0 8px;min-height:var(--strip-h)}
+  /* a closed sheet strip opens by tapping its name, so it shows no hide/show button */
+  .lp-root.lp-collapsed .sf-ptoggle,.rp-root.rp-collapsed .sf-ptoggle{display:none}
+  .hud>.sf-ptoggle{order:2}
   .sf-ph-btn{cursor:pointer;font-size:.55rem;padding:8px 6px;border-radius:8px}
   body.sf-sheet-left .lp-root .sf-ph-right,body.sf-sheet-right .rp-root .sf-ph-left{display:inline-block;opacity:.55}
   body.sf-sheet-left .sf-ph-left,body.sf-sheet-right .sf-ph-right{background:rgba(204,136,51,0.2)}
   body.sf-sheet-left .sf-ph-close,body.sf-sheet-right .sf-ph-close{display:inline-block}
   body.sf-sheet-left .rp-root,body.sf-sheet-right .lp-root{display:none}
+  /* carrying a pet from the Lists sheet: show the dashboard strip to drop it on */
+  body.sf-dragging.sf-sheet-right .lp-root{display:flex;z-index:975}
 }
 .empty-hint{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:850;background:rgba(26,18,10,0.92);border:2px dashed rgba(204,136,51,0.6);border-radius:14px;padding:12px 16px;color:#ffcc66;font-family:'VT323',monospace;font-size:1rem;text-align:center;pointer-events:none;display:none;max-width:80vw}
 .dpad{position:fixed;bottom:50px;right:10px;z-index:800;display:grid;grid-template-columns:32px 32px 32px;grid-template-rows:32px 32px 32px;gap:2px}
@@ -231,7 +246,7 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
 <!-- HUD -->
 <!-- DASHBOARD BAR: title, sharing note, "sniff sniff" pet search (filters both panels), tools -->
 <div class="hud" id="sfBar">
-  <div class="htitle" onclick="toggleViewMenu(event)" title="View options" style="cursor:pointer">&#128062; Snout First</div>
+  <div class="htitle" onclick="toggleViewMenu(event)" title="Full screen options" style="cursor:pointer">&#128062; Snout First</div>
   <span class="net-note" id="netNote" style="display:none"></span>
   <div class="hsep"></div>
   <div class="csearch" role="search">
@@ -246,19 +261,24 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
   <div class="hbtns">
     <button class="hbtn paw" onclick="togglePinPet()">&#128062; PIN PET</button>
     <button class="hbtn spot" onclick="toggleSpotDropMode()">&#128205; SPOT</button>
-    <button class="hbtn" onclick="toggleTrail()">&#128017; TRAIL</button>
-    <button class="hbtn" onclick="togglePack()">&#128058; PACK</button>
+    <button class="hbtn" type="button" data-panel-toggle="trail">&#128017; TRAIL</button>
+    <button class="hbtn" type="button" data-panel-toggle="pack">&#128058; PACK</button>
     <button class="hbtn clown" onclick="toggleClownMe()" id="btnClown">&#129313; SHOW ME</button>
     <div class="redirect-wrap">
       <button class="hbtn" onclick="openRedirectMenu(event)">&#128257; Redirect</button>
     </div>
   </div>
+  <button class="sf-ptoggle" type="button" data-panel-toggle="bar"><span class="sf-pt-icon">&#9650;</span><span class="sf-pt-label">hide</span></button>
 </div>
+<!-- shown while the top bar is hidden; brings it back -->
+<button class="sf-ptab sf-ptab-top" type="button" data-panel-toggle="bar"><span class="sf-pt-icon">&#9660;</span><span class="sf-pt-label" data-open="Snout First" data-closed="&#128062; Snout First">&#128062; Snout First</span></button>
 
 <!-- VIEW MODE MENU (logo click) -->
 <div class="view-menu" id="viewMenu">
+  <div class="menu-sep" style="border:none;color:#cc8833;font-size:.8rem;padding:4px 8px">FULL SCREEN</div>
   <button onclick="setView('horizontal')">Full Screen Horizontal</button>
   <button onclick="setView('panoramic')">Full Screen Panoramic</button>
+  <button onclick="setView('vertical')">Full Screen Vertical</button>
   <button onclick="setView('normal')">Normal / Default Browser</button>
   <div class="menu-sep"></div>
   <button class="settings-toggle" onclick="toggleSettingsSubmenu(event)">Settings One</button>
@@ -466,11 +486,11 @@ document.addEventListener('keydown', e => {
 
 <!-- ═══ ACCOUNT HUB (ported from windows13's useRbox v2, restyled to Snout First) ═══ -->
 <div id="sfuHub">
-  <div id="sfuCircle" onclick="sfuToggle()" title="useRbox">&#128062;</div>
+  <div id="sfuCircle" role="button" tabindex="0" data-panel-toggle="account" title="useRbox">&#128062;</div>
   <div id="sfuPanel" class="sfu-hidden">
-    <div class="sfu-header">
-      <strong>&#128062; useRbox</strong>
-      <button onclick="sfuToggle()">&times;</button>
+    <div class="sf-phead">
+      <span class="sf-ptitle">&#128062; useRbox</span>
+      <button class="sf-ptoggle" type="button" data-panel-toggle="account"><span class="sf-pt-icon">&#9650;</span><span class="sf-pt-label">hide</span></button>
     </div>
     <div id="sfuClock">--:--:--</div>
 
@@ -521,6 +541,7 @@ document.addEventListener('keydown', e => {
 function sfuToggle() {
   document.getElementById('sfuPanel').classList.toggle('sfu-hidden');
   if (!document.getElementById('sfuPanel').classList.contains('sfu-hidden')) sfuLoad();
+  if (window.sfPanels) sfPanels.sync('account');
 }
 
 // Anchor to the right panel's outer edge instead of a fixed viewport spot, so it
@@ -650,18 +671,24 @@ function sfuDeleteSpot(id) {
 
 function sfuClearData() {
   if (!confirm('Reset all local Snout First data on this device? This clears pets pinned only in this browser, your notes, saved spots, and settings. Pets already saved to the network are not affected.')) return;
-  ['snoutfirst_pets','snoutfirst_sniffs','snoutfirst_pets_v2','sf_notes','sf_home','sf_lost_pets','sf_vets_custom','sf_food_custom','sf_walk_spots','sf_owner_signature','rv_username','rv_local_uid','sf_walks','sf_pet_photos','sf_dashboard','sf_food_saved_v1'].forEach(k => localStorage.removeItem(k));
+  ['snoutfirst_pets','snoutfirst_sniffs','snoutfirst_pets_v2','sf_notes','sf_home','sf_lost_pets','sf_vets_custom','sf_food_custom','sf_walk_spots','sf_owner_signature','rv_username','rv_local_uid','sf_walks','sf_pet_photos','sf_dashboard','sf_food_saved_v1','sf_panels'].forEach(k => localStorage.removeItem(k));
   if (typeof toast === 'function') toast('\u{1F5D1}\u{FE0F} Local data cleared! Reloading...');
   setTimeout(() => location.reload(), 900);
 }
 </script>
 
 <!-- STATS -->
-<div class="stats">
-  <div class="spill">&#128062; Pets: <b id="petCount">0</b></div>
-  <div class="spill">&#128017; Sniffs: <b id="sniffCount">0</b></div>
-  <div class="spill">&#128205; Spots: <b id="spotCount">0</b></div>
-  <div class="spill">&#129313; Clowns: <b id="clownCount">0</b></div>
+<div class="stats" id="sfStats">
+  <div class="sf-phead">
+    <span class="sf-ptitle">&#128202; STATS</span>
+    <button class="sf-ptoggle" type="button" data-panel-toggle="stats"><span class="sf-pt-icon">&#9650;</span><span class="sf-pt-label">hide</span></button>
+  </div>
+  <div class="sf-pbody">
+    <div class="spill">&#128062; Pets: <b id="petCount">0</b></div>
+    <div class="spill">&#128017; Sniffs: <b id="sniffCount">0</b></div>
+    <div class="spill">&#128205; Spots: <b id="spotCount">0</b></div>
+    <div class="spill">&#129313; Clowns: <b id="clownCount">0</b></div>
+  </div>
 </div>
 
 <!-- MAP CREDITS (credit required by the OpenStreetMap tile rules). The sharing
@@ -689,13 +716,19 @@ function sfuClearData() {
 
 <!-- TRAIL PANEL -->
 <div class="side-panel" id="trailPanel">
-  <h3>&#128017; The Trail <button class="close-btn" onclick="toggleTrail()">&#10005;</button></h3>
+  <div class="sf-phead">
+    <span class="sf-ptitle">&#128017; THE TRAIL</span>
+    <button class="sf-ptoggle" type="button" data-panel-toggle="trail"><span class="sf-pt-icon">&#9664;</span><span class="sf-pt-label">hide</span></button>
+  </div>
   <div id="trailContent"></div>
 </div>
 
 <!-- PACK PANEL -->
 <div class="side-panel" id="packPanel">
-  <h3>&#128058; The Pack <button class="close-btn" onclick="togglePack()">&#10005;</button></h3>
+  <div class="sf-phead">
+    <span class="sf-ptitle">&#128058; THE PACK</span>
+    <button class="sf-ptoggle" type="button" data-panel-toggle="pack"><span class="sf-pt-icon">&#9664;</span><span class="sf-pt-label">hide</span></button>
+  </div>
   <div id="packContent"></div>
 </div>
 
@@ -771,6 +804,7 @@ function sfuClearData() {
 
 <!-- Snout First modules -->
 <script src="js/safe-text.js"></script>
+<script src="js/panel-toggle.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/distance.js"></script>
@@ -1029,6 +1063,8 @@ cv.addEventListener('pointerdown', e => {
 });
 cv.addEventListener('pointermove', e => {
   if (!dragging) return;
+  // A pet pin is being carried to the dashboard (js/snout-first-service.js): keep the map still.
+  if (window.SnoutFirst && SnoutFirst.isDragging()) return;
   const iz = Math.floor(S.zoom), frac = Math.pow(2, S.zoom - iz);
   const scale = TILE_SZ * frac;
   const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
@@ -1062,8 +1098,8 @@ cv.addEventListener('pointerup', e => {
 });
 
 // Right-click a pin -> same actions userbox (Wag/Go/Remove), no need to left-click first.
-// Long-press is left alone on purpose: panel-drag.js already uses a 300ms hold to start
-// dragging a pin onto a side panel, so binding hold to "open menu" too would fight that
+// Long-press is left alone on purpose: js/snout-first-service.js already uses a 350ms hold
+// to start carrying a pin onto the dashboard, so binding hold to "open menu" too would fight that
 // gesture. On touch, a plain tap already opens the userbox below.
 cv.addEventListener('contextmenu', e => {
   const petIdx = petAtScreen(e.clientX, e.clientY);
@@ -1345,6 +1381,7 @@ function toggleTrail() {
   const panel = document.getElementById('trailPanel');
   panel.classList.toggle('show', S.trailOpen);
   if (S.trailOpen) renderTrail();
+  if (window.sfPanels) sfPanels.sync('trail');
 }
 
 function renderTrail() {
@@ -1392,6 +1429,7 @@ function togglePack() {
   const panel = document.getElementById('packPanel');
   panel.classList.toggle('show', S.packOpen);
   if (S.packOpen) renderPack();
+  if (window.sfPanels) sfPanels.sync('pack');
 }
 
 function renderPack() {
@@ -1919,8 +1957,27 @@ setTimeout(initFirebaseIntegration, 500);
 <script src="js/vets.js"></script>
 <script src="js/foodbanks.js"></script>
 <script src="js/panel-drag.js"></script>
+<script src="js/snout-first-service.js"></script>
 <script src="js/doglost-embed.js"></script>
 <script src="js/map-spots.js"></script>
 <script src="js/clown-markers.js"></script>
+
+<script>
+// ── Panels: one hide / show pattern for every panel (js/panel-toggle.js) ──
+// The dashboard (left) and the lists (right) register themselves in
+// js/panel-left.js and js/panel-right.js. Docked panels remember their state;
+// pop-overs (Trail, Pack, useRbox) open closed each time.
+if (window.sfPanels) {
+  sfPanels.register({ id: 'bar', el: '#sfBar', label: 'the top bar', side: 'top' });
+  sfPanels.register({ id: 'stats', el: '#sfStats', label: 'the stats', side: 'top' });
+  sfPanels.register({ id: 'trail', el: '#trailPanel', label: 'the trail', side: 'left', remember: false,
+    read: () => !!S.trailOpen, apply: open => { if (!!S.trailOpen !== open) toggleTrail(); } });
+  sfPanels.register({ id: 'pack', el: '#packPanel', label: 'the pack', side: 'left', remember: false,
+    read: () => !!S.packOpen, apply: open => { if (!!S.packOpen !== open) togglePack(); } });
+  sfPanels.register({ id: 'account', el: '#sfuPanel', label: 'useRbox', side: 'top', remember: false,
+    read: () => !document.getElementById('sfuPanel').classList.contains('sfu-hidden'),
+    apply: open => { if (sfPanels.isOpen('account') !== open) sfuToggle(); } });
+}
+</script>
 </body>
 </html>

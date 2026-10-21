@@ -49,8 +49,8 @@ function showDogLostFallback(el) {
       text-align:center;font-family:'VT323',monospace;
     ">
       <div style="color:rgba(255,100,50,0.7);font-size:.78rem;margin-bottom:6px">
-        🐕 DogLost blocks embedding (CORS/X-Frame)<br>
-        <span style="color:rgba(255,204,102,0.3);font-size:.65rem">opening in new tab is the safe fallback</span>
+        🐕 DogLost does not let its map be shown inside other websites<br>
+        <span style="color:rgba(255,204,102,0.3);font-size:.65rem">open it in a new tab instead</span>
       </div>
       <a href="${DOGLOST_MAP_URL}" target="_blank" rel="noopener" style="
         display:inline-block;padding:5px 12px;

@@ -141,6 +141,8 @@ npx serve .
 
 Snout First stays as a **folder inside map-merger-venti** repo. It shares Firebase, map tiles, and the Leaflet instance with Map Merger Venti.
 
+**Shared map setup:** Snout First runs on each device only until Firebase is set up. See [FIREBASE-SETUP.md](FIREBASE-SETUP.md) for the three steps.
+
 ```
 map-merger-venti/
 ├── index.html                      ← Map Merger Venti main

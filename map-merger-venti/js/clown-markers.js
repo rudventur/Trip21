@@ -5,6 +5,11 @@
 //  Additive: wraps drawPets() like map-spots.js and lost-zone.js.
 //  Uses Firebase Realtime DB for multi-user presence.
 //  Falls back to local-only single-clown mode if no Firebase.
+//
+//  Privacy: your position is shared ONCE when you tap SHOW ME, rounded to
+//  about 100 m, and removed when you tap it again or close the page. It is
+//  NOT re-sent automatically every 30 seconds any more; tap SHOW ME off and
+//  on to move your clown.
 // ═══════════════════════════════════════════════════════════════
 
 (function() {
@@ -12,13 +17,11 @@
 
   const STALE_MS   = 5 * 60 * 1000;   // 5 min -> sleeping badge
   const GONE_MS    = 15 * 60 * 1000;   // 15 min -> remove
-  const UPDATE_MS  = 30 * 1000;        // auto-update GPS every 30s
   const CHANNEL    = 'snoutfirst_global';
 
   let clownActive = false;
   let myClownRef = null;
   let clownListener = null;
-  let clownUpdateTimer = null;
   let clowns = {};  // uid -> { lat, lon, name, last_updated, pet_id, status }
   let myUid = null;
 
@@ -39,25 +42,32 @@
       return;
     }
 
-    const name = localStorage.getItem('rv_username') || 'Anonymous Clown';
+    const name = (localStorage.getItem('rv_username') || 'Anonymous Clown').slice(0, 30);
     const walkingPet = getWalkingPetEmoji();
 
     const data = {
-      lat: pos.lat,
-      lng: pos.lon,
+      lat: roundShared(pos.lat),
+      lng: roundShared(pos.lon),
       name: name,
       emoji: '🤡',
       last_updated: Date.now(),
-      pet_id: typeof activeWalkPetId !== 'undefined' ? activeWalkPetId : null,
-      pet_emoji: walkingPet,
       status: 'active'
     };
+    if (typeof activeWalkPetId !== 'undefined' && activeWalkPetId) data.pet_id = safeId(activeWalkPetId).slice(0, 40);
+    if (walkingPet) data.pet_emoji = walkingPet;
 
-    if (typeof db !== 'undefined' && db) {
+    const sharing = typeof isSharing === 'function' && isSharing();
+    if (sharing) {
       myClownRef = db.ref('clown_markers/' + CHANNEL + '/' + myUid);
-      await myClownRef.set(data);
-      myClownRef.onDisconnect().remove();
-      startListening();
+      try {
+        await myClownRef.set({ ...data, last_updated: firebase.database.ServerValue.TIMESTAMP });
+        myClownRef.onDisconnect().remove();
+        startListening();
+      } catch (e) {
+        console.warn('[clown] could not share position:', e);
+        myClownRef = null;
+        toast('🤡 Could not share your position — shown on this device only');
+      }
     }
 
     // Always store locally too
@@ -69,10 +79,8 @@
     const badge = document.getElementById('clownBadge');
     if (badge) badge.classList.add('show');
 
-    toast('🤡 You\'re on the map!');
-
-    // Start auto-updating position
-    clownUpdateTimer = setInterval(refreshMyPosition, UPDATE_MS);
+    toast(myClownRef ? '🤡 You\'re on the shared map (rough position, about 100 m)'
+                     : '🤡 Shown on this device only — sharing is not set up');
   }
 
   function hideMe() {
@@ -83,38 +91,12 @@
     if (myUid) delete clowns[myUid];
     clownActive = false;
 
-    if (clownUpdateTimer) {
-      clearInterval(clownUpdateTimer);
-      clownUpdateTimer = null;
-    }
-
     const btn = document.getElementById('btnClown');
     if (btn) btn.classList.remove('active');
     const badge = document.getElementById('clownBadge');
     if (badge) badge.classList.remove('show');
 
     toast('🤡 Hidden from map');
-  }
-
-  // ── Refresh position (manual or auto) ──
-  async function refreshMyPosition() {
-    if (!clownActive || !myUid) return;
-    const pos = await getBestPosition();
-    const walkingPet = getWalkingPetEmoji();
-
-    const update = {
-      lat: pos.lat,
-      lng: pos.lon,
-      last_updated: Date.now(),
-      status: 'active',
-      pet_id: typeof activeWalkPetId !== 'undefined' ? activeWalkPetId : null,
-      pet_emoji: walkingPet
-    };
-
-    if (myClownRef) {
-      myClownRef.update(update);
-    }
-    Object.assign(clowns[myUid], update, { lon: update.lng });
   }
 
   // ── Firebase listener for all clowns in channel ──
@@ -309,7 +291,7 @@
   }
 
   function getMyUid() {
-    if (typeof auth !== 'undefined' && auth && auth.currentUser) {
+    if (typeof isSharing === 'function' && isSharing()) {
       return auth.currentUser.uid;
     }
     // Fallback: generate a persistent local ID

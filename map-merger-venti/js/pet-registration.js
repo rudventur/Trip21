@@ -36,8 +36,15 @@ function getMoodEmoji(mood) {
   return m ? m.emoji : '';
 }
 
+// Limits shared with database.rules.json (keep them in step).
+const PET_LIMITS = { name: 40, breed: 40, bio: 200, tag: 24, tags: 8, owner: 30, species: 20, mood: 20 };
+
+function cleanTags(tags) {
+  return (tags || []).map(t => String(t).trim().slice(0, PET_LIMITS.tag)).filter(Boolean).slice(0, PET_LIMITS.tags);
+}
+
 async function registerPet(petData) {
-  if (!db) {
+  if (!isSharing()) {
     // Fallback: save locally
     return registerPetLocally(petData);
   }
@@ -45,39 +52,53 @@ async function registerPet(petData) {
   const uid = getUid();
   const petId = db.ref('snoutfirst/pets').push().key;
 
+  // Photos are NOT sent to the shared database (they would fill the free
+  // allowance fast). They stay on this device — see savePetPhotoLocally().
   const pet = {
-    name: petData.name,
-    species: petData.species || 'dog',
-    breed: petData.breed || '',
+    name: String(petData.name).slice(0, PET_LIMITS.name),
+    species: String(petData.species || 'dog').slice(0, PET_LIMITS.species),
+    breed: String(petData.breed || '').slice(0, PET_LIMITS.breed),
     emoji: getSpeciesEmoji(petData.species),
-    bio: petData.bio || '',
-    photo_url: petData.photo_url || '',
-    photo_base64: petData.photo_base64 || '',
-    personality_tags: petData.tags || [],
-    home_lat: petData.lat,
-    home_lng: petData.lng,
-    home_address: petData.address || '',
+    bio: String(petData.bio || '').slice(0, PET_LIMITS.bio),
+    personality_tags: cleanTags(petData.tags),
+    // Shared pin position is rounded to about 100 metres (privacy).
+    home_lat: roundShared(petData.lat),
+    home_lng: roundShared(petData.lng),
+    owner_uid: uid,
     registered_by: uid,
     owner_name: getUserName(),
-    owner_contact: petData.contact || '',
     notify_walks: true,
     notify_feedings: true,
-    notify_wandering: true,
     status: 'home',
-    current_walker: null,
-    mood: petData.mood || 'happy',
-    created_at: Date.now(),
+    mood: String(petData.mood || 'happy').slice(0, PET_LIMITS.mood),
+    created_at: firebase.database.ServerValue.TIMESTAMP,
     stats: {
       lifetime_distance_km: 0,
       total_walks: 0,
-      total_feedings: 0,
-      last_walked: null
+      total_feedings: 0
     },
     active: true
   };
 
   await db.ref(`snoutfirst/pets/${petId}`).set(pet);
   return petId;
+}
+
+// ── Pet photos: kept on this device only ──
+const PET_PHOTO_KEY = 'sf_pet_photos';
+function savePetPhotoLocally(petId, dataUrl) {
+  if (!petId || !/^data:image\//.test(dataUrl || '')) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(PET_PHOTO_KEY) || '{}');
+    all[safeId(petId)] = dataUrl;
+    localStorage.setItem(PET_PHOTO_KEY, JSON.stringify(all));
+  } catch (e) { console.warn('Photo not saved (device storage full?):', e); }
+}
+function getPetPhotoLocal(petId) {
+  try {
+    const url = JSON.parse(localStorage.getItem(PET_PHOTO_KEY) || '{}')[safeId(petId)] || '';
+    return /^data:image\//.test(url) ? url : '';
+  } catch (e) { return ''; }
 }
 
 function registerPetLocally(petData) {
@@ -104,13 +125,13 @@ function registerPetLocally(petData) {
 }
 
 async function getPet(petId) {
-  if (!db) return null;
+  if (!isSharing()) return null;
   const snap = await db.ref(`snoutfirst/pets/${petId}`).once('value');
   return snap.exists() ? { id: petId, ...snap.val() } : null;
 }
 
 async function getAllPets() {
-  if (!db) {
+  if (!isSharing()) {
     return JSON.parse(localStorage.getItem('snoutfirst_pets_v2') || '[]');
   }
   const snap = await db.ref('snoutfirst/pets').orderByChild('active').equalTo(true).once('value');
@@ -123,11 +144,11 @@ async function getAllPets() {
 
 async function getMyPets() {
   const uid = getUid();
-  if (!db) {
+  if (!isSharing()) {
     return JSON.parse(localStorage.getItem('snoutfirst_pets_v2') || '[]');
   }
   const snap = await db.ref('snoutfirst/pets')
-    .orderByChild('registered_by')
+    .orderByChild('owner_uid')
     .equalTo(uid)
     .once('value');
   const pets = [];
@@ -150,42 +171,12 @@ async function getNearbyPets(lat, lng, radiusKm) {
   }).sort((a, b) => a._distance - b._distance);
 }
 
-async function updatePetStatus(petId, status, walkerUid, walkerName) {
-  if (!db) return;
+// Only the pet's owner may change its status (the database rules enforce this).
+async function updatePetStatus(petId, status) {
+  if (!isSharing()) return;
   const updates = { status };
-  if (walkerUid !== undefined) updates.current_walker = walkerUid;
+  updates.current_walker = status === 'walking' ? getUid() : null;
   await db.ref(`snoutfirst/pets/${petId}`).update(updates);
-
-  // Notify owner
-  const pet = await getPet(petId);
-  if (!pet) return;
-
-  if (status === 'walking' && pet.notify_walks !== false) {
-    sendNotification(pet.registered_by, {
-      type: 'walk_started',
-      pet_id: petId,
-      pet_name: pet.name,
-      by_uid: walkerUid,
-      by_name: walkerName || getUserName(),
-      message: `🐾 ${pet.name} is being walked by ${walkerName || getUserName()}!`
-    });
-  } else if (status === 'home') {
-    sendNotification(pet.registered_by, {
-      type: 'returned_home',
-      pet_id: petId,
-      pet_name: pet.name,
-      by_uid: getUid(),
-      by_name: getUserName(),
-      message: `🏠 ${pet.name} is back home!`
-    });
-  } else if (status === 'wandering' && pet.notify_wandering !== false) {
-    sendNotification(pet.registered_by, {
-      type: 'wandering',
-      pet_id: petId,
-      pet_name: pet.name,
-      message: `⚠️ ${pet.name}'s walker disconnected — wandering!`
-    });
-  }
 }
 
 // Convert photo file to base64
@@ -196,7 +187,7 @@ function photoToBase64(file) {
       // Resize if too large
       const img = new Image();
       img.onload = () => {
-        const maxSize = 400;
+        const maxSize = 160;  // small: kept in this device's storage
         let w = img.width, h = img.height;
         if (w > maxSize || h > maxSize) {
           const ratio = Math.min(maxSize / w, maxSize / h);

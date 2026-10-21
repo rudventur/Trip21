@@ -206,7 +206,8 @@ setInterval(spotsCleanupExpired, 60000);
   // moves with the panel (collapsed vs expanded) instead of sitting on top of it.
   function positionSpotFab() {
     const lp = document.getElementById('lpRoot');
-    fab.style.left = lp ? (lp.getBoundingClientRect().right + 8) + 'px' : '10px';
+    const phone = window.matchMedia('(max-width: 700px)').matches;  // panels are bottom sheets there
+    fab.style.left = (lp && !phone) ? (lp.getBoundingClientRect().right + 8) + 'px' : '10px';
   }
   positionSpotFab();
   // panel-left.js's own init() is itself deferred to DOMContentLoaded (its script
@@ -341,6 +342,7 @@ function saveNewSpot() {
     reactions: {},   // { emoji: count }
     comments: [],     // [{text, timestamp}]
     linkedPetIndex: null, // future: pet linking
+    owner_uid: typeof getUid === 'function' ? getUid() : '', // who made it (spots stay on this device for now)
   };
   S.spots.push(spot);
   saveSpots();
@@ -413,7 +415,7 @@ function addSpotComment(id) {
   const input = document.getElementById('spotCommentInput');
   const text = (input.value || '').trim();
   if (!text) return;
-  spot.comments.push({ text, timestamp: Date.now() });
+  spot.comments.push({ text, timestamp: Date.now(), owner_uid: typeof getUid === 'function' ? getUid() : '' });
   saveSpots();
   input.value = '';
   openSpotDetail(spot, parseInt(document.getElementById('spotDetail').style.left), parseInt(document.getElementById('spotDetail').style.top));

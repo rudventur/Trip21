@@ -1171,7 +1171,25 @@ function initBaseLangSelect(){
     const opt=document.createElement('option');opt.value=l.code;opt.textContent=`${FLAGS[l.code]||''} ${l.name}`;
     if(l.code==='en')opt.selected=true;sel.appendChild(opt);
   });
-  sel.addEventListener('change',e=>{baseLang=e.target.value});
+  sel.title='Your language (the useR language), remembered on this device';
+  // the useR's language: ?lang= from the useRbox link wins, then the device's saved choice
+  let want='';
+  try{want=new URLSearchParams(location.search).get('lang')||localStorage.getItem('rvUserLang')||''}catch(e){}
+  want=String(want).toLowerCase();
+  if(want&&!LANGUAGES.some(l=>l.code===want))want=want.split('-')[0];
+  if(want&&LANGUAGES.some(l=>l.code===want)){
+    if(![...sel.options].some(o=>o.value===want)){
+      const l=LANGUAGES.find(x=>x.code===want);const opt=document.createElement('option');
+      opt.value=want;opt.textContent=`${FLAGS[want]||''} ${l.name}`;sel.appendChild(opt);
+    }
+    sel.value=want;baseLang=want;
+    try{localStorage.setItem('rvUserLang',want)}catch(e){}
+  }
+  sel.addEventListener('change',e=>{
+    baseLang=e.target.value;
+    try{localStorage.setItem('rvUserLang',baseLang)}catch(e){}
+    try{const u=new URL(location.href);u.searchParams.set('lang',baseLang);history.replaceState(null,'',u.href)}catch(e){}
+  });
 }
 
 // ========================================================================

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memorial — RudVentur Cemetery</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="style-cemetery-patch.css">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- Favicons — RudVentur R-in-circle logo -->
+<link rel="icon" type="image/png" sizes="192x192" href="https://rudventur.github.io/RudVentur.com/embed/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="https://rudventur.github.io/RudVentur.com/embed/icon-512.png">
+<link rel="apple-touch-icon" href="https://rudventur.github.io/RudVentur.com/embed/apple-touch-icon.png">
+<script src="https://rudventur.github.io/RudVentur.com/embed/rvView.js"></script>
+<script src="https://rudventur.github.io/RudVentur.com/embed/useRbox.js" defer></script>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-brand" data-rv-logo>Rud<span>Ventur</span> Cemetery</a>
+  <div class="nav-links">
+    <a href="browse.html">all memorials</a>
+    <a href="invite.html">invite</a>
+  </div>
+  <button class="sf-ptoggle" type="button" data-panel-toggle="nav"><span class="sf-pt-icon"></span><span class="sf-pt-label"></span></button>
+</nav>
+<button class="sf-ptab nav-tab" type="button" data-panel-toggle="nav"><span class="sf-pt-icon"></span> menu</button>
+
+<div class="container">
+
+  <div class="profile-header">
+    <div class="type-badge large">
+      <span id="profile-type-icon"></span>
+      <span id="profile-type-label"></span>
+    </div>
+  </div>
+
+  <div id="profile-form">
+
+    <!-- Avatar -->
+    <div class="form-section">
+      <h3>avatar / stone mark</h3>
+      <div class="avatar-section">
+        <div class="avatar-preview" id="avatar-preview">🪦</div>
+        <div class="avatar-controls">
+          <div class="avatar-tabs">
+            <button class="avatar-tab active" id="tab-emoji">emoji</button>
+            <button class="avatar-tab" id="tab-url">image url</button>
+          </div>
+          <div id="emoji-panel">
+            <div class="emoji-grid" id="emoji-grid"></div>
+          </div>
+          <div id="url-panel" style="display:none">
+            <input type="text" id="avatar-url" placeholder="paste image url (photo of stone, portrait, etc.)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Core fields -->
+    <div class="form-section">
+      <h3>the basics</h3>
+      <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" placeholder="full name as it should be remembered">
+      </div>
+      <div class="field">
+        <label for="bio">One-line epitaph / summary</label>
+        <input type="text" id="bio" placeholder="short line for the stone or listing">
+      </div>
+    </div>
+
+    <!-- Type-specific fields (injected by profile.js; cemetery gets dates) -->
+    <div class="form-section" id="type-fields-section" style="display:none">
+      <h3 id="type-fields-title"></h3>
+      <div id="type-fields"></div>
+    </div>
+
+  </div>
+
+  <!-- Save -->
+  <div class="btn-group" style="justify-content:center;margin:1.5rem 0">
+    <button class="btn btn-primary" id="save-btn">save memorial</button>
+  </div>
+
+  <!-- Share -->
+  <div class="form-section" id="share-section" style="display:none">
+    <h3>share this memorial</h3>
+    <div class="invite-link-display" id="share-link"></div>
+    <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;text-align:center">click to copy</p>
+  </div>
+
+  <!-- Connections (shell) -->
+  <div class="connections-shell">
+    <h3>connections</h3>
+    <div class="empty-state">no connections yet. that's okay. this is just the beginning.</div>
+  </div>
+
+  <!-- RudVentur Universe -->
+  <div class="linked-projects">
+    <h3>RudVentur Universe</h3>
+    <div class="universe-links" id="universe-links"></div>
+  </div>
+
+</div>
+
+<div class="footer">RudVentur Cemetery Memorials v0.1</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://rudventur.github.io/RudVentur.com/popcoin/config.js"></script>
+<script src="firebase.js"></script>
+<script src="profile.js"></script>
+
+</body>
+</html>

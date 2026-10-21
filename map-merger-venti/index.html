@@ -46,6 +46,12 @@ canvas#world{position:fixed;inset:0;z-index:1}
 .redirect-card small{opacity:.7;font-size:.8em}
 
 /* ── VIEW MODE MENU (logo click) ── */
+.modes-wrap{position:relative;display:inline-block;flex-shrink:0}
+.modes-menu{display:none;position:fixed;background:#000;border:1.5px solid #ffe600;border-radius:6px;padding:5px;z-index:2100;min-width:200px;max-height:70vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.7);font-family:'VT323',monospace}
+.modes-menu.show{display:block}
+.modes-menu button{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;color:#ffe600;font-family:'VT323',monospace;font-size:1rem;padding:5px 8px;cursor:pointer;text-align:left;border-radius:4px}
+.modes-menu button:hover,.modes-menu button.cur{background:rgba(255,230,0,.12)}
+.modes-menu small{color:rgba(255,230,0,.5);margin-left:auto}
 .view-menu{display:none;position:fixed;background:#000;border:1.5px solid #00ff41;border-radius:6px;padding:5px;z-index:2100;min-width:230px;box-shadow:0 12px 40px rgba(0,0,0,.7);font-family:'VT323',monospace}
 .view-menu.show{display:block}
 .view-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:#00ff41;font-family:inherit;font-size:.95rem;padding:8px 9px;cursor:pointer;border-radius:4px}
@@ -249,6 +255,9 @@ canvas#world{position:fixed;inset:0;z-index:1}
   <button class="hbtn" id="notebookBtn" style="display:none;border-color:#44ff88;color:#44ff88" onclick="toggleUfoNotebook()">&#128221; LOG</button>
   <button class="hbtn y" id="commentBtn" onclick="toggleCommentMode()">&#128172; NOTE</button>
   <button class="hbtn" id="dashboardBtn" style="border-color:#011289;color:#6688ff" onclick="toggleDashboard()">&#128203; BOARD</button>
+  <div class="modes-wrap">
+    <button class="hbtn y" id="modesBtn" onclick="toggleModesMenu(event)">&#128640; MODES &#9662;</button>
+  </div>
   <div class="redirect-wrap">
     <button class="hbtn" id="redirectBtn" style="border-color:#c084fc;color:#c084fc" onclick="openRedirectMenu(event)">&#128257; REDIRECT</button>
   </div>
@@ -539,8 +548,40 @@ document.addEventListener('keydown', e => {
 <script src="search-panel.js"></script>
 <script src="cemetery.js"></script>
 <script src="mushrooms.js"></script>
+<script src="lost-pets.js"></script>
 <script src="wildlife.js"></script>
 <script src="ui.js"></script>
 <script src="game.js"></script>
+<!-- MODES — drop-down menu: pick how you travel (also openable by link: ?mode=plane) -->
+<div class="modes-menu" id="modesMenu"></div>
+<script>
+// ── Modes drop-down menu. Direct links: map-merger-venti/?mode=walk|bike|scooter|car|bus|train|boat|plane|ufo ──
+function toggleModesMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('modesMenu');
+  if (menu.classList.contains('show')) { menu.classList.remove('show'); return; }
+  const rect = e.currentTarget.getBoundingClientRect();
+  menu.innerHTML = Object.keys(VEH).map(function(k) {
+    const v = VEH[k];
+    return '<button class="' + (G.veh === k ? 'cur' : '') + '" onclick="pickMode(\'' + k + '\')">' + v.em + ' ' + v.lbl + '<small>' + v.kmh + '</small></button>';
+  }).join('');
+  menu.style.top = (rect.bottom + 8) + 'px';
+  menu.style.left = Math.min(Math.max(rect.left, 8), window.innerWidth - 218) + 'px';
+  menu.classList.add('show');
+}
+function pickMode(k) {
+  document.getElementById('modesMenu').classList.remove('show');
+  const b = document.querySelector('.vbtn[data-v="' + k + '"]');
+  if (b) setV(b);
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#modesMenu') && !e.target.closest('#modesBtn')) document.getElementById('modesMenu').classList.remove('show');
+});
+window.addEventListener('load', function() {
+  const p = new URLSearchParams(location.search);
+  const m = p.get('mode');
+  if (m && VEH[m]) setTimeout(function() { pickMode(m); }, 600);
+});
+</script>
 </body>
 </html>

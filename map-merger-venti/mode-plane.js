@@ -481,8 +481,25 @@ function drawAirports() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  SECTION 5: REAL-TIME FLIGHTS (OpenSky Network)
+//  SECTION 5: REAL-TIME FLIGHTS (OpenSky Network) — display only
 // ═══════════════════════════════════════════════════════════════
+// OpenSky gives anonymous visitors 400 credits a day (counted per internet
+// address). A box of 25 square degrees or less costs 1 credit per request;
+// bigger boxes cost 2-4. So we only ask for the part of the map you can see,
+// shrunk to at most FLIGHT_MAX_AREA square degrees (always the 1-credit price),
+// and only every FLIGHT_POLL_MS: 40 credits an hour, a tenth of the daily
+// allowance. Nothing is fetched while the tab is hidden, and polling stops
+// completely when you leave plane mode (flyClear) or close the flights panel.
+// Rules: https://openskynetwork.github.io/opensky-api/rest.html#limitations
+
+const FLIGHT_POLL_MS = 90000;        // 90 seconds between requests
+const FLIGHT_MIN_GAP_MS = 20000;     // map jumps may refresh sooner, but never faster than this
+const FLIGHT_MAX_AREA = 24;          // square degrees (≤ 25 costs 1 credit)
+const FLIGHT_429_FALLBACK_S = 3600;  // wait an hour if OpenSky does not say how long
+let flightLastFetch = 0;             // when the last request was sent (ms)
+let flightPausedUntil = 0;           // no requests before this time (ms)
+let flightFailures = 0;              // consecutive network failures, for backing off
+let flightFetching = false;
 
 function toggleFlights() {
   showFlights = !showFlights;
@@ -492,21 +509,85 @@ function toggleFlights() {
   if (showFlights) {
     fb.style.background = '#00bfff'; fb.style.color = '#000';
     fp.classList.add('show'); fetchFlights();
-    flightInt = setInterval(fetchFlights, 15000);
   } else {
-    fb.style.cssText = ''; fp.classList.remove('show');
-    clearInterval(flightInt); flights = [];
-    document.getElementById('SF').textContent = '0';
+    stopFlights();
   }
 }
 
+// Turn the flights layer fully off: no timer left behind, nothing drawn.
+function stopFlights() {
+  showFlights = false;
+  clearTimeout(flightInt); flightInt = null;
+  flights = [];
+  const fb = document.getElementById('flightBtn'), fp = document.getElementById('FP');
+  const ov = document.getElementById('ov-flights');
+  if (fb) fb.style.cssText = '';
+  if (fp) fp.classList.remove('show');
+  if (ov) ov.checked = false;
+  const sf = document.getElementById('SF'); if (sf) sf.textContent = '0';
+}
+
+// Schedule the next request (one timer at a time, only while visible).
+function scheduleFlights(delayMs) {
+  clearTimeout(flightInt); flightInt = null;
+  if (!showFlights || document.hidden) return;
+  flightInt = setTimeout(fetchFlights, Math.max(0, delayMs));
+}
+
+// The visible map area, padded a little and capped to FLIGHT_MAX_AREA around the centre.
+function flightBox() {
+  const a = screenToWorld(0, 0), b = screenToWorld(cv.width, cv.height);
+  let latSpan = Math.abs(a.lat - b.lat) * 1.2, lonSpan = Math.abs(b.lng - a.lng) * 1.2;
+  latSpan = Math.max(latSpan, 0.2); lonSpan = Math.max(lonSpan, 0.2);
+  const area = latSpan * lonSpan;
+  if (area > FLIGHT_MAX_AREA) {
+    const k = Math.sqrt(FLIGHT_MAX_AREA / area);
+    latSpan *= k; lonSpan *= k;
+  }
+  const r = v => Math.round(v * 1000) / 1000;
+  return {
+    lamin: r(Math.max(-85, G.pos.lat - latSpan / 2)), lamax: r(Math.min(85, G.pos.lat + latSpan / 2)),
+    lomin: r(Math.max(-180, G.pos.lng - lonSpan / 2)), lomax: r(Math.min(180, G.pos.lng + lonSpan / 2))
+  };
+}
+
+function flightNote(html) {
+  document.getElementById('FL').innerHTML = html + flightCredit();
+}
+function flightCredit() {
+  return '<div style="margin-top:4px;font-size:.68rem;color:rgba(0,191,255,0.45)">Live plane data: ' +
+    '<a href="https://opensky-network.org" target="_blank" rel="noopener" style="color:#00bfff">The OpenSky Network</a></div>';
+}
+function flightEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 async function fetchFlights() {
-  const pad = getZoom().z >= 9 ? 1 : 3;
+  if (!showFlights || document.hidden || flightFetching) return;
+  const now = Date.now();
+  if (now < flightPausedUntil) { scheduleFlights(flightPausedUntil - now); return; }
+  if (now - flightLastFetch < FLIGHT_MIN_GAP_MS) { scheduleFlights(FLIGHT_MIN_GAP_MS - (now - flightLastFetch)); return; }
+  flightLastFetch = now;
+  flightFetching = true;
+  const bx = flightBox();
   try {
-    const res = await fetch('https://opensky-network.org/api/states/all?lamin=' +
-      (G.pos.lat - 5 - pad) + '&lomin=' + (G.pos.lng - 8 - pad) +
-      '&lamax=' + (G.pos.lat + 5 + pad) + '&lomax=' + (G.pos.lng + 8 + pad));
+    const res = await fetch('https://opensky-network.org/api/states/all?lamin=' + bx.lamin +
+      '&lomin=' + bx.lomin + '&lamax=' + bx.lamax + '&lomax=' + bx.lomax);
+    if (res.status === 429) {
+      // Daily allowance used up. OpenSky says how long to wait (if the browser lets us read it).
+      const wait = parseInt(res.headers.get('X-Rate-Limit-Retry-After-Seconds') || res.headers.get('Retry-After'), 10);
+      const waitS = wait > 0 ? wait : FLIGHT_429_FALLBACK_S;
+      flightPausedUntil = Date.now() + waitS * 1000;
+      flights = [];
+      document.getElementById('SF').textContent = '0';
+      const until = new Date(flightPausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      flightNote('<div style="color:#ffcc44;font-size:.8rem">Live plane data paused: the free daily limit is used up. Trying again after ' + until + '.</div>');
+      scheduleFlights(waitS * 1000);
+      return;
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
+    flightFailures = 0;
     const st = (data.states || []).slice(0, 100);
     flights = st.map(s => ({
       icao: s[0], callsign: (s[1] || '').trim(), country: s[2],
@@ -518,18 +599,36 @@ async function fetchFlights() {
       const alt = f.altitude ? Math.round(f.altitude * 3.281) : '?';
       const spd = f.velocity ? Math.round(f.velocity * 3.6) : '?';
       return '<div class="fpflight"><span>' + (f.onGround ? '\u{1F6E9}' : '\u2708') + ' ' +
-        (f.callsign || f.icao || '???') + '</span><span style="color:rgba(0,191,255,0.4)">' +
+        flightEsc(f.callsign || f.icao || '???') + '</span><span style="color:rgba(0,191,255,0.4)">' +
         alt + 'ft ' + spd + 'km/h</span></div>';
     });
     const gr = flights.filter(f => f.onGround).length;
-    document.getElementById('FL').innerHTML =
-      (rows.join('') || '<div style="color:rgba(0,191,255,0.3);padding:6px">No flights</div>') +
+    const at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    flightNote(
+      (rows.join('') || '<div style="color:rgba(0,191,255,0.3);padding:6px">No flights in view</div>') +
       '<div style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(0,191,255,0.1);font-size:.7rem;color:rgba(0,191,255,0.3)">' +
-      '\u2708 ' + (flights.length - gr) + ' airborne \u00B7 \u{1F6E9} ' + gr + ' grounded</div>';
+      '\u2708 ' + (flights.length - gr) + ' airborne \u00B7 \u{1F6E9} ' + gr + ' grounded \u00B7 updated ' + at +
+      ', refreshes every ' + Math.round(FLIGHT_POLL_MS / 1000) + ' s</div>');
+    scheduleFlights(FLIGHT_POLL_MS);
   } catch (e) {
-    document.getElementById('FL').innerHTML = '<div style="color:#ff4444;font-size:.82rem">OpenSky offline</div>';
+    // Network trouble (or a limit reply the browser would not let us read): back off.
+    flightFailures++;
+    const backoff = Math.min(FLIGHT_POLL_MS * Math.pow(2, flightFailures), 30 * 60 * 1000);
+    flightNote('<div style="color:#ff4444;font-size:.82rem">Live plane data unavailable right now. Trying again in ' +
+      Math.round(backoff / 60000) + ' min.</div>');
+    scheduleFlights(backoff);
+  } finally {
+    flightFetching = false;
   }
 }
+
+// Pause while the tab is hidden; catch up when it comes back.
+document.addEventListener('visibilitychange', () => {
+  if (!showFlights) return;
+  if (document.hidden) { clearTimeout(flightInt); flightInt = null; return; }
+  const due = Math.max(flightPausedUntil, flightLastFetch + FLIGHT_POLL_MS) - Date.now();
+  scheduleFlights(due);
+});
 
 function drawFlights() {
   if (!showFlights) return;
@@ -1251,6 +1350,7 @@ function drawPlaneSprite() {
 
 function flyClear() {
   airports = []; flights = [];
+  stopFlights();  // leaving plane mode: stop OpenSky polling completely
   planeAirborne = false; nearAirport = null;
   planeAltitude = 0; targetAltitude = 0; planeSpeed = 0;
   planeLandingMode = false;

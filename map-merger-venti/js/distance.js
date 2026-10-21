@@ -13,11 +13,18 @@ function haversine(pos1, pos2) {
 }
 
 // Walk tracker instance
+// Privacy: the route is recorded on THIS DEVICE ONLY (local storage key
+// 'sf_walks'). Nothing is streamed to the shared database while walking.
+// At the end the walker is asked whether to share the walk; only then a
+// summary with a rough route (rounded to about 100 m) is sent — see shareWalk().
+const WALKS_KEY = 'sf_walks';
+const WALKS_KEEP = 20;          // walks kept on this device
+const SHARED_PATH_MAX = 200;    // points in a shared route (database rules cap it too)
+
 class WalkTracker {
-  constructor(petId, walkId, channelId) {
+  constructor(petId, walkId) {
     this.petId = petId;
     this.walkId = walkId;
-    this.channelId = channelId;
     this.totalDistance = 0;
     this.lastPos = null;
     this.startTime = Date.now();
@@ -30,8 +37,6 @@ class WalkTracker {
   }
 
   tick() {
-    if (!db) return;
-    // Get current position from map state
     const currentPos = this.getCurrentPosition();
     if (!currentPos) return;
 
@@ -40,27 +45,12 @@ class WalkTracker {
       if (segmentKm > 0.005 && segmentKm < 1.0) { // > 5m and < 1km (sanity)
         this.totalDistance += segmentKm;
         this.lastPos = currentPos;
-
-        // Save breadcrumb
-        const crumb = { lat: currentPos.lat, lng: currentPos.lng, t: Date.now() };
-        this.breadcrumbs.push(crumb);
-
-        // Update Firebase
-        if (db) {
-          db.ref(`walk_history/${this.petId}/${this.walkId}/path`).push(crumb);
-          db.ref(`walk_history/${this.petId}/${this.walkId}`).update({
-            distance_km: Math.round(this.totalDistance * 100) / 100,
-            duration_mins: Math.round((Date.now() - this.startTime) / 60000)
-          });
-          if (this.channelId) {
-            db.ref(`mapmergerventi/active_pets/${this.channelId}/${this.petId}`).update({
-              session_distance_km: Math.round(this.totalDistance * 100) / 100
-            });
-          }
-        }
+        // Breadcrumb stays in memory / on this device only
+        this.breadcrumbs.push({ lat: currentPos.lat, lng: currentPos.lng, t: Date.now() });
       }
     } else {
       this.lastPos = currentPos;
+      this.breadcrumbs.push({ lat: currentPos.lat, lng: currentPos.lng, t: Date.now() });
     }
   }
 
@@ -90,24 +80,66 @@ class WalkTracker {
     this.interval = null;
   }
 
+  // Ends the walk: saves it on this device, updates the pet's totals
+  // (the owner's own pet record) and returns the walk summary.
   async finish() {
     this.stop();
-    if (!db) return;
-    // Update walk history
-    await db.ref(`walk_history/${this.petId}/${this.walkId}`).update({
+    const walk = {
+      id: this.walkId,
+      pet_id: this.petId,
+      started_at: this.startTime,
       ended_at: Date.now(),
       distance_km: this.getDistanceKm(),
       duration_mins: this.getDurationMins(),
-      status: 'completed'
-    });
-    // Update pet lifetime stats
-    const statsRef = db.ref(`snoutfirst/pets/${this.petId}/stats`);
-    await statsRef.transaction(stats => {
-      if (!stats) stats = { lifetime_distance_km: 0, total_walks: 0, total_feedings: 0 };
-      stats.lifetime_distance_km = Math.round((stats.lifetime_distance_km + this.totalDistance) * 100) / 100;
-      stats.total_walks = (stats.total_walks || 0) + 1;
-      stats.last_walked = Date.now();
-      return stats;
-    });
+      path: this.breadcrumbs
+    };
+    try {
+      const walks = JSON.parse(localStorage.getItem(WALKS_KEY) || '[]');
+      walks.push(walk);
+      localStorage.setItem(WALKS_KEY, JSON.stringify(walks.slice(-WALKS_KEEP)));
+    } catch (e) { console.warn('Walk not saved on device:', e); }
+
+    if (typeof isSharing === 'function' && isSharing()) {
+      const statsRef = db.ref(`snoutfirst/pets/${this.petId}/stats`);
+      await statsRef.transaction(stats => {
+        if (!stats) stats = { lifetime_distance_km: 0, total_walks: 0, total_feedings: 0 };
+        stats.lifetime_distance_km = Math.round(((stats.lifetime_distance_km || 0) + this.totalDistance) * 100) / 100;
+        stats.total_walks = (stats.total_walks || 0) + 1;
+        stats.last_walked = Date.now();
+        return stats;
+      }).catch(e => console.warn('Walk totals not saved:', e));
+    }
+    return walk;
+  }
+}
+
+// Share one finished walk — only called after the walker says yes.
+// Coordinates are rounded to 3 decimals (about 100 m) and the route is thinned.
+async function shareWalk(walk, petName) {
+  if (typeof isSharing !== 'function' || !isSharing() || !walk) return false;
+  const pts = walk.path || [];
+  const step = Math.max(1, Math.ceil(pts.length / SHARED_PATH_MAX));
+  const path = [];
+  for (let i = 0; i < pts.length && path.length < SHARED_PATH_MAX; i += step) {
+    path.push({ lat: roundShared(pts[i].lat), lng: roundShared(pts[i].lng) });
+  }
+  const uid = getUid();
+  const key = db.ref(`snoutfirst/shared_walks/${uid}`).push().key;
+  const data = {
+    owner_uid: uid,
+    pet_id: safeId(walk.pet_id).slice(0, 40),
+    pet_name: String(petName || '').slice(0, 40),
+    started_at: Math.min(walk.started_at, Date.now()),
+    ended_at: firebase.database.ServerValue.TIMESTAMP,
+    distance_km: Math.min(walk.distance_km, 500),
+    duration_mins: Math.min(walk.duration_mins, 1440)
+  };
+  if (path.length) data.path = path;
+  try {
+    await db.ref(`snoutfirst/shared_walks/${uid}/${key}`).set(data);
+    return true;
+  } catch (e) {
+    console.warn('Walk not shared:', e);
+    return false;
   }
 }

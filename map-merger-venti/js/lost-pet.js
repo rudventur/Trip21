@@ -49,7 +49,7 @@ const LOST_CSS = `
     50%      { box-shadow: 0 0 38px rgba(255,20,20,0.55); }
   }
   .sf-lost-banner {
-    position: fixed; top: 50px; left: 0; right: 0;
+    position: fixed; top: var(--bar-h, 50px); left: 0; right: 0;
     background: rgba(40,0,0,0.92);
     border-bottom: 2px solid #ff2222;
     color: #ff4444; font-family: 'Bubblegum Sans', cursive;
@@ -81,7 +81,7 @@ window.activateLostMode = function(pet) {
     document.body.appendChild(lostBannerEl);
   }
   lostBannerEl.innerHTML =
-    `🔴 ${pet.name} IS LOST — Last seen: ${pet.lostLat ? pet.lostLat.toFixed(4) : '?'}° N · ${pet.lostLon ? pet.lostLon.toFixed(4) : '?'}° W &nbsp;|&nbsp;
+    `🔴 ${escHtml(pet.name)} IS LOST — Last seen: ${pet.lostLat ? pet.lostLat.toFixed(4) : '?'}° N · ${pet.lostLon ? pet.lostLon.toFixed(4) : '?'}° W &nbsp;|&nbsp;
      <span style="cursor:pointer;text-decoration:underline" onclick="window.lpMarkFound && lpMarkFound(${(typeof S !== 'undefined' ? S.pets.indexOf(pet) : 0)})">✅ MARK FOUND</span>`;
 
   // Sync panels
@@ -91,10 +91,10 @@ window.activateLostMode = function(pet) {
   // Draw zone
   if (typeof drawLostZone === 'function') drawLostZone(pet);
 
-  // Push to ArtSpace City (placeholder hook)
+  // Show it in ArtSpace City too (lost-pets.js there reads 'artspace_lost_pets')
   pushToArtSpaceCity(pet);
 
-  // Firebase broadcast (placeholder)
+  // Share the report on the network (your own pets only, rounded position)
   broadcastLostToFirebase(pet);
 
   saveLostState();
@@ -106,6 +106,7 @@ window.deactivateLostMode = function() {
   if (typeof rpSetLostMode === 'function') rpSetLostMode(false);
   if (typeof clearLostZone === 'function') clearLostZone();
   saveLostState();
+  setTimeout(pushToArtSpaceCity, 0); // after the found pet's lost flag is cleared
 
   // Celebration toast
   setTimeout(() => {
@@ -114,46 +115,54 @@ window.deactivateLostMode = function() {
 };
 
 // ── ArtSpace City crossover ──
-function pushToArtSpaceCity(pet) {
-  // PLACEHOLDER — when ArtSpace City adds a lost-pet layer:
-  // window.parent.postMessage({ type: 'SF_LOST_PET', pet }, '*');
-  // or: artSpaceCityAddPin({ type:'lost', ...pet });
-  // For now, write to localStorage so ArtSpace can read it
+function pushToArtSpaceCity(justLost) {
+  // ArtSpace City (index.html, lost-pets.js) draws every entry of this key on its map and
+  // follows changes, also when both pages are open side by side. Written from the pets that
+  // are lost right now, so a found pet disappears from there as well.
   try {
-    const existing = JSON.parse(localStorage.getItem('artspace_lost_pets') || '[]');
-    const idx = existing.findIndex(p => p.name === pet.name);
-    const entry = {
-      name: pet.name, species: pet.species,
-      lat: pet.lostLat, lon: pet.lostLon,
-      lostAt: pet.lostAt, active: true
-    };
-    if (idx >= 0) existing[idx] = entry;
-    else existing.push(entry);
-    localStorage.setItem('artspace_lost_pets', JSON.stringify(existing));
-    // PLACEHOLDER: ArtSpace City will read 'artspace_lost_pets' on its map init
-    console.log('[SnoutFirst] Lost pet written to artspace_lost_pets localStorage key');
+    const pets = (typeof S !== 'undefined' && S.pets) || [];
+    const list = pets.filter(p => (p.lost || p === justLost) && isFinite(p.lostLat) && isFinite(p.lostLon)).map(p => ({
+      name: String(p.name || '').slice(0, 40), species: p.species,
+      lat: +p.lostLat, lon: +p.lostLon, lostAt: p.lostAt || Date.now(), active: true
+    }));
+    localStorage.setItem('artspace_lost_pets', JSON.stringify(list));
   } catch(e) {}
 }
 
-// ── Firebase broadcast (placeholder) ──
-function broadcastLostToFirebase(pet) {
-  // PLACEHOLDER — replace with actual Firebase write:
-  // db.ref('snoutfirst/lost/' + pet._fbId || pet.name).set({
-  //   name: pet.name, lat: pet.lostLat, lon: pet.lostLon,
-  //   lostAt: pet.lostAt, active: true
-  // });
-  if (typeof db !== 'undefined' && db) {
-    try {
-      const key = (pet._fbId || pet.name.replace(/\s+/g, '_')).toLowerCase();
-      db.ref('snoutfirst/lost/' + key).set({
-        name: pet.name, species: pet.species,
-        lat: pet.lostLat, lon: pet.lostLon,
-        lostAt: pet.lostAt, active: true,
-        owner: localStorage.getItem('rv_username') || 'anonymous'
-      });
-    } catch(e) { console.warn('[lost-pet] Firebase write failed:', e); }
-  }
+// ── Firebase broadcast ──
+// Only your own pets are broadcast, under a key tied to your uid, with the
+// last-seen spot rounded to about 100 m. The database rules check owner_uid.
+function isMine(pet) {
+  return !pet.registered_by || pet.registered_by === getUid();
 }
+function lostKeyFor(pet) {
+  if (pet._fbId) return safeId(pet._fbId);
+  const slug = String(pet.name || 'pet').toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 30);
+  return safeId(getUid() + '_' + slug);
+}
+function broadcastLostToFirebase(pet) {
+  if (typeof isSharing !== 'function' || !isSharing() || !isMine(pet)) return;
+  const data = {
+    name: String(pet.name || '').slice(0, 40),
+    species: String(pet.species || 'other').slice(0, 20),
+    lostAt: firebase.database.ServerValue.TIMESTAMP,
+    active: true,
+    owner: getUserName(),
+    owner_uid: getUid()
+  };
+  if (isFinite(pet.lostLat) && isFinite(pet.lostLon)) {
+    data.lat = roundShared(pet.lostLat);
+    data.lon = roundShared(pet.lostLon);
+  }
+  db.ref('snoutfirst/lost/' + lostKeyFor(pet)).set(data)
+    .catch(e => console.warn('[lost-pet] Firebase write failed:', e));
+}
+// Found again: take the report down (your own pets only).
+window.clearLostFromFirebase = function(pet) {
+  if (!pet || typeof isSharing !== 'function' || !isSharing() || !isMine(pet)) return;
+  db.ref('snoutfirst/lost/' + lostKeyFor(pet)).remove()
+    .catch(e => console.warn('[lost-pet] Firebase remove failed:', e));
+};
 
 // ── Check on load if any pets were lost ──
 function checkOnLoad() {

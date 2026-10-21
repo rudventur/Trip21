@@ -2,14 +2,23 @@
 //  notifications.js — Owner notification system
 // ═══════════════════════════════════════════════════════════════
 
+// Sends a short note to a pet owner. The database rules only accept notes
+// whose by_uid is the sender's own signed-in uid.
 function sendNotification(ownerUid, data) {
-  if (!db || !ownerUid) return;
+  if (typeof isSharing !== 'function' || !isSharing() || !ownerUid) return;
+  const uid = getUid();
+  if (ownerUid === uid) return; // no need to notify yourself
   const notifRef = db.ref(`notifications/${ownerUid}`).push();
   notifRef.set({
-    ...data,
-    timestamp: Date.now(),
+    type: String(data.type || 'info').slice(0, 20),
+    pet_id: safeId(data.pet_id).slice(0, 40),
+    pet_name: String(data.pet_name || '').slice(0, 40),
+    by_uid: uid,
+    by_name: getUserName(),
+    message: String(data.message || '').slice(0, 160),
+    timestamp: firebase.database.ServerValue.TIMESTAMP,
     read: false
-  });
+  }).catch(e => console.warn('Notification not sent:', e));
 }
 
 // Listen for notifications for current user
@@ -22,7 +31,7 @@ function onNotification(callback) {
 
 function startNotificationListener() {
   const uid = getUid();
-  if (!uid || !db) return;
+  if (!uid || typeof isSharing !== 'function' || !isSharing()) return;
   if (notifListener) return; // already listening
 
   notifListener = db.ref(`notifications/${uid}`)
@@ -39,7 +48,7 @@ function startNotificationListener() {
 
 async function getUnreadNotifications(limit) {
   const uid = getUid();
-  if (!uid || !db) return [];
+  if (!uid || typeof isSharing !== 'function' || !isSharing()) return [];
   limit = limit || 20;
   const snap = await db.ref(`notifications/${uid}`)
     .orderByChild('timestamp')
@@ -54,13 +63,13 @@ async function getUnreadNotifications(limit) {
 
 async function markNotificationRead(notifId) {
   const uid = getUid();
-  if (!uid || !db) return;
+  if (!uid || typeof isSharing !== 'function' || !isSharing()) return;
   await db.ref(`notifications/${uid}/${notifId}`).update({ read: true });
 }
 
 async function markAllNotificationsRead() {
   const uid = getUid();
-  if (!uid || !db) return;
+  if (!uid || typeof isSharing !== 'function' || !isSharing()) return;
   const snap = await db.ref(`notifications/${uid}`)
     .orderByChild('read')
     .equalTo(false)

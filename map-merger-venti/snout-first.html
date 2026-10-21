@@ -8,10 +8,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Bubblegum+Sans&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#1a120a;font-family:'VT323',monospace;overflow:hidden;width:100vw;height:100vh;color:#ffcc66}
-canvas#snoutMap{position:fixed;inset:0;z-index:1}
+canvas#snoutMap{position:fixed;inset:0;z-index:1;touch-action:none}
 
 /* ── HUD ── */
-.hud{position:fixed;top:0;left:0;right:0;height:50px;background:rgba(26,18,10,0.95);border-bottom:3px solid #cc8833;display:flex;align-items:center;gap:8px;padding:0 10px;z-index:1000;box-shadow:0 0 20px rgba(204,136,51,0.2)}
+:root{--bar-h:50px;--sheet-h:62vh;--strip-h:40px}
+.hud{position:fixed;top:0;left:0;right:0;height:var(--bar-h);background:rgba(26,18,10,0.95);border-bottom:3px solid #cc8833;display:flex;align-items:center;gap:8px;padding:0 10px;z-index:1000;box-shadow:0 0 20px rgba(204,136,51,0.2)}
 .htitle{font-family:'Bubblegum Sans',cursive;font-size:1.1rem;color:#ffcc66;text-shadow:0 0 8px rgba(255,204,102,0.4);white-space:nowrap;cursor:pointer}
 .htitle:hover{text-shadow:0 0 14px rgba(255,204,102,0.7)}
 .hsep{width:2px;height:26px;background:rgba(204,136,51,0.25);flex-shrink:0}
@@ -20,13 +21,28 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
 .hbtn.active{background:#cc8833;color:#1a120a;box-shadow:0 0 10px rgba(204,136,51,0.4)}
 .hbtn.paw{border-color:#88cc44;color:#88cc44}.hbtn.paw:hover,.hbtn.paw.active{background:#88cc44;color:#1a120a}
 .hbtn.red{border-color:#cc4444;color:#ff6666}.hbtn.red:hover{background:#cc4444;color:#fff}
-.csearch{display:flex;gap:4px;flex:1;max-width:180px}
-.cinput{flex:1;background:rgba(0,0,0,0.4);color:#ffcc66;border:2px solid #cc8833;padding:4px 8px;border-radius:12px;font-family:'VT323',monospace;font-size:.95rem;outline:none;min-width:60px}
-.cinput:focus{border-color:#ffcc66}
-.cinput::placeholder{color:rgba(255,204,102,0.3);font-style:italic}
+/* dashboard bar: title · sharing note · "sniff sniff" search · tools */
+.hbtns{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.csearch{display:flex;align-items:center;gap:4px;flex:1 1 auto;min-width:180px;max-width:440px;background:rgba(0,0,0,0.4);border:2px solid #cc8833;border-radius:12px;padding:1px 3px 1px 8px}
+.csearch:focus-within{border-color:#ffcc66;box-shadow:0 0 10px rgba(255,204,102,0.25)}
+.csearch-icon{font-size:.95rem;opacity:.8}
+.cinput{flex:1;background:none;color:#ffcc66;border:none;padding:3px 2px;font-family:'VT323',monospace;font-size:1.05rem;outline:none;min-width:60px}
+.cinput::placeholder{color:rgba(255,204,102,0.4);font-style:italic}
+.csearch-count{display:none;color:#88cc44;font-size:.85rem;white-space:nowrap}
+.csearch-clear{visibility:hidden;background:none;border:1px solid rgba(204,136,51,0.5);color:#cc8833;border-radius:8px;cursor:pointer;font-size:.75rem;padding:0 5px;line-height:1.3}
+.csearch-clear:hover{background:#cc8833;color:#1a120a}
+.csearch .hbtn{padding:2px 7px;font-size:.85rem;border-width:1px}
+/* search mode chip: what the top box is searching (follows the open tab) */
+.csearch-mode{display:inline-flex;align-items:center;gap:3px;flex-shrink:0;border:1px solid rgba(136,204,68,0.45);color:#88cc44;border-radius:8px;padding:0 5px;font-size:.8rem;line-height:1.35;white-space:nowrap;font-family:'VT323',monospace}
+.csearch-mode.other{background:#ffcc66;border-color:#ffcc66;color:#1a120a;cursor:pointer}
+.csearch-mode button{display:none;background:none;border:none;color:inherit;cursor:pointer;font-size:.75rem;padding:0 0 0 2px;line-height:1}
+.csearch-mode.other button{display:inline}
+.hud .net-note{border:1px solid rgba(255,204,102,0.35);border-radius:10px;padding:1px 8px;margin:0;font-size:.85rem;white-space:nowrap;flex-shrink:0;background:rgba(0,0,0,0.25)}
 
 /* ── STATS ── */
-.stats{position:fixed;top:56px;left:10px;z-index:900;display:flex;flex-direction:column;gap:3px}
+.stats{position:fixed;top:calc(var(--bar-h) + 6px);left:calc(var(--lp-edge, 0px) + 10px);z-index:900;display:flex;flex-direction:column;gap:3px}
+.stats .sf-pbody{display:flex;flex-direction:column;gap:3px}
+.stats.sf-panel-collapsed .sf-pbody{display:none}
 .spill{background:rgba(26,18,10,0.9);border:1px solid rgba(204,136,51,0.2);border-radius:8px;padding:4px 8px;font-family:'VT323',monospace;font-size:.85rem;color:rgba(255,204,102,0.6);white-space:nowrap}
 .spill b{color:#88cc44}
 
@@ -76,10 +92,9 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
 .pet-card .mood{font-size:1rem;margin-top:4px}
 
 /* ── SIDE PANEL (pack/trail) ── */
-.side-panel{position:fixed;top:54px;left:0;bottom:0;width:280px;background:rgba(26,18,10,0.97);border-right:3px solid #cc8833;z-index:950;display:none;overflow-y:auto;padding:10px}
+.side-panel{position:fixed;top:var(--bar-h);left:0;bottom:0;width:280px;max-width:100vw;background:rgba(26,18,10,0.97);border-right:3px solid #cc8833;z-index:980;display:none;overflow-y:auto;padding:10px}
 .side-panel.show{display:block}
-.side-panel h3{font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:1rem;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
-.side-panel .close-btn{background:none;border:1px solid #cc8833;color:#cc8833;padding:2px 6px;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:.2rem;border-radius:4px}
+.side-panel>.sf-phead{margin:-10px -10px 8px;position:sticky;top:-10px;z-index:1;background:#221709}
 
 /* ── SNIFF (post) ── */
 .sniff{background:rgba(0,0,0,0.3);border:2px solid rgba(204,136,51,0.2);border-radius:12px;padding:10px;margin:6px 0}
@@ -94,7 +109,7 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
 .sniff .wag-count{color:#88cc44;font-size:.85rem}
 
 /* ── ZOOM ── */
-.zoom-axis{position:fixed;top:56px;right:8px;z-index:900;display:flex;flex-direction:column;align-items:center;background:rgba(26,18,10,0.95);border:2px solid rgba(204,136,51,0.3);border-radius:12px;padding:4px 3px;width:38px}
+.zoom-axis{position:fixed;top:calc(var(--bar-h) + 62px);right:calc(var(--rp-edge, 0px) + 12px);z-index:900;display:flex;flex-direction:column;align-items:center;background:rgba(26,18,10,0.95);border:2px solid rgba(204,136,51,0.3);border-radius:12px;padding:4px 3px;width:38px}
 .zoom-axis .zbtn{width:28px;height:24px;background:rgba(0,0,0,0.4);border:2px solid rgba(204,136,51,0.4);color:#ffcc66;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .12s;margin:1px 0}
 .zoom-axis .zbtn:hover{background:#cc8833;color:#1a120a}
 .zoom-axis .zlev{font-family:'Press Start 2P',monospace;font-size:.16rem;color:#ffcc66;margin:3px 0}
@@ -122,36 +137,6 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
 .view-submenu.open{display:block}
 .view-submenu button{font-size:.88rem;color:rgba(255,204,102,0.8)}
 
-/* ── ACCOUNT HUB (ported from windows13's useRbox v2) ── */
-#sfuHub{position:fixed;top:60px;right:10px;z-index:1600;font-family:'VT323',monospace}
-#sfuCircle{width:44px;height:44px;border-radius:50%;background:rgba(26,18,10,0.95);border:3px solid #cc8833;display:flex;align-items:center;justify-content:center;font-size:1.4rem;cursor:pointer;box-shadow:0 0 16px rgba(204,136,51,0.35);transition:all .2s}
-#sfuCircle:hover{transform:scale(1.08) rotate(-4deg);box-shadow:0 0 26px rgba(204,136,51,0.55)}
-#sfuPanel{position:absolute;top:52px;right:0;width:280px;max-height:80vh;overflow-y:auto;background:rgba(26,18,10,0.98);border:3px solid #cc8833;border-radius:14px;padding:14px;box-shadow:0 4px 28px rgba(0,0,0,0.5)}
-#sfuPanel.sfu-hidden{display:none}
-.sfu-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(204,136,51,0.25)}
-.sfu-header strong{font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:1rem}
-.sfu-header button{background:none;border:1px solid #cc8833;color:#cc8833;font-size:.95rem;cursor:pointer;padding:2px 7px;border-radius:6px}
-.sfu-header button:hover{background:#cc8833;color:#1a120a}
-#sfuClock{text-align:center;font-size:1.1rem;color:#ffcc66;font-weight:bold;margin-bottom:10px;padding:6px;background:rgba(255,204,102,0.05);border:1px solid rgba(255,204,102,0.25);border-radius:8px}
-#sfuPanel label{display:block;margin:8px 0 3px;font-size:.75rem;color:rgba(255,204,102,0.6);text-transform:uppercase;letter-spacing:1px}
-#sfuPanel input[type=text],#sfuPanel textarea{width:100%;background:rgba(0,0,0,0.4);color:#ffcc66;border:1.5px solid rgba(204,136,51,0.4);padding:6px 8px;font-family:'VT323',monospace;font-size:.9rem;border-radius:8px;outline:none}
-#sfuPanel input[type=text]:focus,#sfuPanel textarea:focus{border-color:#ffcc66}
-#sfuPanel textarea{resize:vertical;min-height:44px}
-.sfu-row{display:flex;gap:6px;align-items:center}
-.sfu-row input{flex:1}
-.sfu-section{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(204,136,51,0.25)}
-#sfuSpotList{max-height:120px;overflow-y:auto;margin-top:6px}
-.sfu-spot-item{display:flex;justify-content:space-between;align-items:center;padding:5px 7px;margin-bottom:5px;background:rgba(0,0,0,0.3);border:1px solid rgba(204,136,51,0.25);border-radius:8px;font-size:.8rem}
-.sfu-spot-item:hover{border-color:#cc8833}
-.sfu-spot-name{display:block;font-family:'Bubblegum Sans',cursive;color:#ffcc66}
-.sfu-spot-coords{display:block;font-size:.65rem;color:rgba(255,204,102,0.4)}
-.sfu-spot-del{background:none;border:none;color:#ff6666;cursor:pointer;font-size:.85rem;padding:0 4px}
-.sfu-social-section{margin-top:12px;padding-top:10px;border-top:1px dashed rgba(204,136,51,0.25)}
-.sfu-social-title{text-align:center;color:#ffcc66;font-size:.85rem;margin-bottom:8px;font-family:'Bubblegum Sans',cursive}
-.sfu-social-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:6px}
-.sfu-social-icon{width:38px;height:38px;background:rgba(0,0,0,0.3);border:2px solid #cc8833;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;text-decoration:none;color:#ffcc66;transition:all .15s}
-.sfu-social-icon:hover{background:#cc8833;color:#1a120a;transform:scale(1.1)}
-
 /* ── BONE DIVIDER ── */
 .bone-divider{text-align:center;color:rgba(204,136,51,0.2);font-size:.7rem;margin:8px 0;letter-spacing:4px}
 
@@ -162,6 +147,60 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
 .clown-badge.show{display:block}
 
 /* ── D-PAD ── */
+.map-credit{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:960;background:rgba(26,18,10,0.8);color:rgba(255,204,102,0.75);font-family:'VT323',monospace;font-size:.75rem;padding:1px 8px;border-radius:8px 8px 0 0;white-space:nowrap}
+.map-credit a{color:#ffcc66}
+.net-note{color:#ffcc66;cursor:help}
+
+/* ── PANELS — one pattern everywhere (toggle logic and shared look: js/panel-toggle.js) ──
+   Every panel: a .sf-phead header with its name and a .sf-ptoggle hide/show button at the
+   end; when hidden, a .sf-ptab (or its header) brings it back; the choice is remembered.
+   Top bar · stats · dashboard (left) · lists (right) · Trail · Pack · useRbox. */
+.sf-phead{display:flex;align-items:center;gap:4px;padding:4px 8px;border-bottom:1.5px solid rgba(204,136,51,0.35);flex-shrink:0;background:rgba(204,136,51,0.06)}
+.stats>.sf-phead{gap:8px;padding:2px 4px 2px 8px;background:rgba(26,18,10,0.92);border:1px solid rgba(204,136,51,0.35);border-radius:8px}
+.stats>.sf-phead .sf-ptoggle{font-size:.8rem;padding:0 6px}
+.sf-ptab.sf-ptab-top{display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:1001;padding:2px 14px 3px;border-radius:0 0 10px 10px;box-shadow:0 2px 10px rgba(0,0,0,0.4)}
+body.sf-hidden-bar{--bar-h:0px}
+body.sf-hidden-bar .hud{display:none}
+body.sf-hidden-bar .sf-ptab.sf-ptab-top{display:flex}
+.hbtn.sf-pt-open{background:#cc8833;color:#1a120a}
+/* a pet being carried onto the dashboard (js/snout-first-service.js) */
+.sf-drag-ghost{position:fixed;z-index:9999;pointer-events:none;background:rgba(26,18,10,0.95);border:2px solid #88cc44;border-radius:10px;padding:5px 10px;font-family:'Bubblegum Sans',cursive;color:#ffcc66;font-size:.9rem;box-shadow:0 4px 16px rgba(0,0,0,0.5);white-space:nowrap}
+.sf-ph-btn{background:none;border:none;color:#ffcc66;font-family:'Press Start 2P',monospace;font-size:.5rem;letter-spacing:1px;cursor:default;padding:3px 0;white-space:nowrap;text-align:left}
+.sf-ph-btn b{font-family:'VT323',monospace;font-size:.85rem;color:#88cc44;font-weight:normal;margin-left:4px;letter-spacing:0}
+.sf-ph-close{display:none;margin-left:auto;background:none;border:1px solid #cc8833;color:#cc8833;border-radius:6px;cursor:pointer;font-size:.8rem;padding:0 8px}
+.lp-root .sf-ph-right,.rp-root .sf-ph-left{display:none}
+.lp-root.lp-collapsed .sf-phead,.rp-root.rp-collapsed .sf-phead{display:none}
+.sf-empty{color:rgba(255,204,102,0.5);text-align:center;padding:14px 8px;font-size:.85rem;line-height:1.35;border:1.5px dashed rgba(204,136,51,0.3);border-radius:9px;margin:6px 0}
+
+@media (max-width:700px){
+  :root{--bar-h:92px}
+  .hud{flex-wrap:wrap;align-content:center;row-gap:5px;padding:4px 8px}
+  .hud .hsep{display:none}
+  .htitle{font-size:1rem}
+  .hud .net-note{font-size:.78rem;padding:1px 6px}
+  .hbtns{order:2;flex:1 1 0;min-width:0;overflow-x:auto;scrollbar-width:none}
+  .hbtns::-webkit-scrollbar{height:0}
+  .csearch{order:3;flex:1 1 100%;max-width:none}
+  .map-credit{bottom:calc(var(--strip-h) + 4px);border-radius:8px;white-space:normal;width:max-content;max-width:96vw;text-align:center;font-size:.7rem}
+  body.sf-sheet-left .map-credit,body.sf-sheet-right .map-credit{bottom:calc(var(--sheet-h) + 4px)}
+  body.sf-sheet-left .dpad,body.sf-sheet-right .dpad,body.sf-sheet-left .spot-fab,body.sf-sheet-right .spot-fab{display:none}
+  .dpad{bottom:calc(var(--strip-h) + 34px)}
+  .spot-fab{bottom:calc(var(--strip-h) + 34px) !important}
+  /* sheet tabs: closed = two half-width strips at the bottom; open = one sheet */
+  .lp-root.lp-collapsed .sf-phead,.rp-root.rp-collapsed .sf-phead{display:flex;height:100%;justify-content:center}
+  .lp-root .sf-phead,.rp-root .sf-phead{padding:0 8px;min-height:var(--strip-h)}
+  /* a closed sheet strip opens by tapping its name, so it shows no hide/show button */
+  .lp-root.lp-collapsed .sf-ptoggle,.rp-root.rp-collapsed .sf-ptoggle{display:none}
+  .hud>.sf-ptoggle{order:2}
+  .sf-ph-btn{cursor:pointer;font-size:.55rem;padding:8px 6px;border-radius:8px}
+  body.sf-sheet-left .lp-root .sf-ph-right,body.sf-sheet-right .rp-root .sf-ph-left{display:inline-block;opacity:.55}
+  body.sf-sheet-left .sf-ph-left,body.sf-sheet-right .sf-ph-right{background:rgba(204,136,51,0.2)}
+  body.sf-sheet-left .sf-ph-close,body.sf-sheet-right .sf-ph-close{display:inline-block}
+  body.sf-sheet-left .rp-root,body.sf-sheet-right .lp-root{display:none}
+  /* carrying a pet from the Lists sheet: show the dashboard strip to drop it on */
+  body.sf-dragging.sf-sheet-right .lp-root{display:flex;z-index:975}
+}
+.empty-hint{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:850;background:rgba(26,18,10,0.92);border:2px dashed rgba(204,136,51,0.6);border-radius:14px;padding:12px 16px;color:#ffcc66;font-family:'VT323',monospace;font-size:1rem;text-align:center;pointer-events:none;display:none;max-width:80vw}
 .dpad{position:fixed;bottom:50px;right:10px;z-index:800;display:grid;grid-template-columns:32px 32px 32px;grid-template-rows:32px 32px 32px;gap:2px}
 .db{background:rgba(26,18,10,0.88);border:2px solid rgba(204,136,51,0.4);color:#ffcc66;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:all .1s}
 .db:active,.db.pressed{background:#cc8833;color:#1a120a}
@@ -178,28 +217,41 @@ canvas#snoutMap{position:fixed;inset:0;z-index:1}
 <body>
 
 <!-- HUD -->
-<div class="hud">
-  <div class="htitle" onclick="toggleViewMenu(event)" title="View options" style="cursor:pointer">&#128062; Snout First</div>
+<!-- DASHBOARD BAR: title, sharing note, "sniff sniff" pet search (filters both panels), tools -->
+<div class="hud" id="sfBar">
+  <div class="htitle" onclick="toggleViewMenu(event)" title="Full screen options" style="cursor:pointer">&#128062; Snout First</div>
+  <span class="net-note" id="netNote" style="display:none"></span>
   <div class="hsep"></div>
-  <div class="csearch">
-    <input class="cinput" id="searchInput" type="text" placeholder="Sniff sniff...">
-    <button class="hbtn" onclick="searchPlace()">GO</button>
+  <div class="csearch" role="search">
+    <span class="csearch-icon" aria-hidden="true">&#128067;</span>
+    <span class="csearch-mode" id="sfModeChip" data-mode="pets" aria-live="polite" title="The search box is searching pets"><span id="sfModeLabel">&#128062; pets</span><button id="sfModeExit" type="button" title="Back to the pet search" aria-label="Back to the pet search">&#10005;</button></span>
+    <input class="cinput" id="searchInput" type="text" placeholder="sniff sniff" autocomplete="off" spellcheck="false" aria-label="Search pets by name, breed or tag. Press Enter to go to the first match, or to look up a place.">
+    <span class="csearch-count" id="sfSearchCount" aria-live="polite"></span>
+    <button class="csearch-clear" id="sfSearchClear" type="button" title="Clear the search">&#10005;</button>
+    <button class="hbtn" id="sfSearchGo" type="button" onclick="sfSearchButton()" title="Look up this text as a place and move the map there">&#128506; place</button>
   </div>
   <div class="hsep"></div>
-  <button class="hbtn paw" onclick="togglePinPet()">&#128062; PIN PET</button>
-  <button class="hbtn spot" onclick="toggleSpotDropMode()">&#128205; SPOT</button>
-  <button class="hbtn" onclick="toggleTrail()">&#128017; TRAIL</button>
-  <button class="hbtn" onclick="togglePack()">&#128058; PACK</button>
-  <button class="hbtn clown" onclick="toggleClownMe()" id="btnClown">&#129313; SHOW ME</button>
-  <div class="redirect-wrap">
-    <button class="hbtn" onclick="openRedirectMenu(event)">&#128257; Redirect</button>
+  <div class="hbtns">
+    <button class="hbtn paw" onclick="togglePinPet()">&#128062; PIN PET</button>
+    <button class="hbtn spot" onclick="toggleSpotDropMode()">&#128205; SPOT</button>
+    <button class="hbtn" type="button" data-panel-toggle="trail">&#128017; TRAIL</button>
+    <button class="hbtn" type="button" data-panel-toggle="pack">&#128058; PACK</button>
+    <button class="hbtn clown" onclick="toggleClownMe()" id="btnClown">&#129313; SHOW ME</button>
+    <div class="redirect-wrap">
+      <button class="hbtn" onclick="openRedirectMenu(event)">&#128257; Redirect</button>
+    </div>
   </div>
+  <button class="sf-ptoggle" type="button" data-panel-toggle="bar"><span class="sf-pt-icon">&#9650;</span><span class="sf-pt-label">hide</span></button>
 </div>
+<!-- shown while the top bar is hidden; brings it back -->
+<button class="sf-ptab sf-ptab-top" type="button" data-panel-toggle="bar"><span class="sf-pt-icon">&#9660;</span><span class="sf-pt-label" data-open="Snout First" data-closed="&#128062; Snout First">&#128062; Snout First</span></button>
 
 <!-- VIEW MODE MENU (logo click) -->
 <div class="view-menu" id="viewMenu">
+  <div class="menu-sep" style="border:none;color:#cc8833;font-size:.8rem;padding:4px 8px">FULL SCREEN</div>
   <button onclick="setView('horizontal')">Full Screen Horizontal</button>
   <button onclick="setView('panoramic')">Full Screen Panoramic</button>
+  <button onclick="setView('vertical')">Full Screen Vertical</button>
   <button onclick="setView('normal')">Normal / Default Browser</button>
   <div class="menu-sep"></div>
   <button class="settings-toggle" onclick="toggleSettingsSubmenu(event)">Settings One</button>
@@ -405,204 +457,30 @@ document.addEventListener('keydown', e => {
 });
 </script>
 
-<!-- ═══ ACCOUNT HUB (ported from windows13's useRbox v2, restyled to Snout First) ═══ -->
-<div id="sfuHub">
-  <div id="sfuCircle" onclick="sfuToggle()" title="useRbox">&#128062;</div>
-  <div id="sfuPanel" class="sfu-hidden">
-    <div class="sfu-header">
-      <strong>&#128062; useRbox</strong>
-      <button onclick="sfuToggle()">&times;</button>
-    </div>
-    <div id="sfuClock">--:--:--</div>
+<!-- The profile box is the shared RUDVENTUR useRbox (the R circle, top right), loaded at the end of
+     this page. Snout First's own part (walk spots on this map, reset local data) is its left section:
+     js/snout-first-userbox.js. -->
 
-    <label>&#128100; Display Name</label>
-    <div class="sfu-row">
-      <input type="text" id="sfuUsername" placeholder="Anonymous Walker">
-      <button class="hbtn paw" onclick="sfuSaveName()">&#128190;</button>
-    </div>
-
-    <label>&#128221; Your Motto</label>
-    <textarea id="sfuSignature" placeholder="e.g. Professional treat negotiator, full-time good boy manager..."></textarea>
-
-    <div class="sfu-section">
-      <label>&#128205; Saved Walk Spots</label>
-      <div class="sfu-row">
-        <input type="text" id="sfuSpotLat" placeholder="lat (or refresh)">
-        <input type="text" id="sfuSpotLon" placeholder="lon">
-        <button class="hbtn" id="sfuGpsBtn" onclick="sfuRefreshGPS()" title="Use my real GPS location">&#128205;</button>
-      </div>
-      <div class="sfu-row" style="margin-top:5px">
-        <input type="text" id="sfuSpotName" placeholder="Spot name...">
-        <button class="hbtn paw" onclick="sfuSaveSpot()">&#128190; Save</button>
-      </div>
-      <div id="sfuSpotList"></div>
-    </div>
-
-    <div class="sfu-social-section">
-      <div class="sfu-social-title">&#128062; Part of RudVentur</div>
-      <div class="sfu-social-grid">
-        <a href="https://github.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="GitHub">&#128187;</a>
-        <a href="https://discord.gg/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Discord">&#128172;</a>
-        <a href="https://twitter.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Twitter/X">&#120143;</a>
-        <a href="https://instagram.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Instagram">&#128247;</a>
-        <a href="https://youtube.com/@rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="YouTube">&#9654;&#65039;</a>
-        <a href="https://ko-fi.com/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Ko-fi">&#9749;</a>
-        <a href="https://tiktok.com/@rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="TikTok">&#127925;</a>
-        <a href="https://t.me/rudventur" target="_blank" rel="noopener" class="sfu-social-icon" title="Telegram">&#9992;&#65039;</a>
-        <a href="mailto:RudVentur@gmail.com" class="sfu-social-icon" title="Email">&#128231;</a>
-      </div>
-    </div>
-
-    <button class="hbtn red" style="width:100%;margin-top:10px" onclick="sfuClearData()">&#128465;&#65039; Reset local data</button>
+<!-- STATS -->
+<div class="stats" id="sfStats">
+  <div class="sf-phead">
+    <span class="sf-ptitle">&#128202; STATS</span>
+    <button class="sf-ptoggle" type="button" data-panel-toggle="stats"><span class="sf-pt-icon">&#9650;</span><span class="sf-pt-label">hide</span></button>
+  </div>
+  <div class="sf-pbody">
+    <div class="spill">&#128062; Pets: <b id="petCount">0</b></div>
+    <div class="spill">&#128017; Sniffs: <b id="sniffCount">0</b></div>
+    <div class="spill">&#128205; Spots: <b id="spotCount">0</b></div>
+    <div class="spill">&#129313; Clowns: <b id="clownCount">0</b></div>
   </div>
 </div>
 
-<script>
-// ═══ Account hub logic ═══
-function sfuToggle() {
-  document.getElementById('sfuPanel').classList.toggle('sfu-hidden');
-  if (!document.getElementById('sfuPanel').classList.contains('sfu-hidden')) sfuLoad();
-}
+<!-- MAP CREDITS (credit required by the OpenStreetMap tile rules). The sharing
+     note ("This device only" / "Shared map on") now sits in the dashboard bar. -->
+<div class="map-credit">Map &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> &middot; search: Nominatim &middot; vets: Overpass &middot; food banks: <a href="https://www.givefood.org.uk/" target="_blank" rel="noopener">Give Food</a>, <a href="https://www.bluecross.org.uk/help-and-support/our-pet-food-banks" target="_blank" rel="noopener">Blue Cross</a>, Overpass</div>
 
-// Anchor to the right panel's outer edge instead of a fixed viewport spot, so it
-// moves with the panel (collapsed vs expanded) instead of sitting on top of it.
-// #rpRoot doesn't exist yet when this script runs (panel-right.js loads later),
-// so the first call falls back to a default until it appears.
-function sfuRepositionHub() {
-  const hub = document.getElementById('sfuHub');
-  const rp = document.getElementById('rpRoot');
-  if (!hub) return;
-  if (rp) {
-    const rect = rp.getBoundingClientRect();
-    hub.style.right = (window.innerWidth - rect.left + 8) + 'px';
-  } else {
-    hub.style.right = '10px';
-  }
-}
-sfuRepositionHub();
-// panel-right.js's own init() is itself deferred to DOMContentLoaded (its script
-// isn't the last thing in the document either), so #rpRoot may not exist yet even
-// here. Re-run one macrotask after DOMContentLoaded — by then every synchronous
-// DOMContentLoaded listener, including panel-right's, has already finished, so this
-// isn't a timing guess the way a fixed setTimeout delay would be.
-document.addEventListener('DOMContentLoaded', () => setTimeout(sfuRepositionHub, 0));
-window.addEventListener('resize', sfuRepositionHub);
-document.addEventListener('transitionend', e => {
-  if (e.target && e.target.id === 'rpRoot') sfuRepositionHub();
-});
-
-function sfuUpdateClock() {
-  const el = document.getElementById('sfuClock');
-  if (el) el.textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
-}
-setInterval(sfuUpdateClock, 1000);
-sfuUpdateClock();
-
-function sfuLoad() {
-  document.getElementById('sfuUsername').value = (typeof getUserName === 'function') ? getUserName() : 'Anonymous Walker';
-  document.getElementById('sfuSignature').value = localStorage.getItem('sf_owner_signature') || '';
-  sfuRenderSpots();
-}
-
-function sfuSaveName() {
-  const name = document.getElementById('sfuUsername').value.trim();
-  if (!name) { if (typeof toast === 'function') toast('Every walker needs a name! \u{1F43E}'); return; }
-  if (typeof setUserName === 'function') setUserName(name);
-  if (typeof toast === 'function') toast('\u{1F464} Name updated to ' + name + '!');
-}
-
-document.getElementById('sfuSignature') && document.getElementById('sfuSignature').addEventListener('blur', () => {
-  localStorage.setItem('sf_owner_signature', document.getElementById('sfuSignature').value);
-});
-
-function sfuGetSpots() {
-  try { return JSON.parse(localStorage.getItem('sf_walk_spots') || '[]'); } catch(e) { return []; }
-}
-
-// Real device GPS, not just wherever the map happens to be panned to.
-function sfuRefreshGPS() {
-  const btn = document.getElementById('sfuGpsBtn');
-  if (!navigator.geolocation) { if (typeof toast === 'function') toast('GPS not supported by this browser \u{1F43E}'); return; }
-  btn.textContent = '⏳';
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      document.getElementById('sfuSpotLat').value = pos.coords.latitude.toFixed(6);
-      document.getElementById('sfuSpotLon').value = pos.coords.longitude.toFixed(6);
-      btn.textContent = '✅';
-      setTimeout(() => { btn.textContent = '\u{1F4CD}'; }, 1500);
-    },
-    err => {
-      if (typeof toast === 'function') toast('GPS error: ' + err.message);
-      btn.textContent = '❌';
-      setTimeout(() => { btn.textContent = '\u{1F4CD}'; }, 1500);
-    },
-    { timeout: 8000 }
-  );
-}
-
-function sfuSaveSpot() {
-  const name = document.getElementById('sfuSpotName').value.trim();
-  if (!name) { if (typeof toast === 'function') toast('Name this spot first! \u{1F43E}'); return; }
-  const typedLat = parseFloat(document.getElementById('sfuSpotLat').value);
-  const typedLon = parseFloat(document.getElementById('sfuSpotLon').value);
-  // Falls back to the current map centre if GPS was never refreshed for this save.
-  const lat = isNaN(typedLat) ? (typeof S !== 'undefined' ? S.lat : null) : typedLat;
-  const lon = isNaN(typedLon) ? (typeof S !== 'undefined' ? S.lon : null) : typedLon;
-  if (lat == null || lon == null) return;
-  const spots = sfuGetSpots();
-  spots.push({ id: Date.now(), name, lat, lon });
-  localStorage.setItem('sf_walk_spots', JSON.stringify(spots));
-  document.getElementById('sfuSpotName').value = '';
-  document.getElementById('sfuSpotLat').value = '';
-  document.getElementById('sfuSpotLon').value = '';
-  sfuRenderSpots();
-  if (typeof toast === 'function') toast('\u{1F4CD} ' + name + ' saved!');
-}
-function sfuRenderSpots() {
-  const list = document.getElementById('sfuSpotList');
-  const spots = sfuGetSpots();
-  if (!spots.length) {
-    list.innerHTML = '<div style="text-align:center;opacity:.4;padding:8px;font-size:.75rem">No saved spots yet</div>';
-    return;
-  }
-  list.innerHTML = spots.map(s => `
-    <div class="sfu-spot-item">
-      <span onclick="sfuGoToSpot(${s.id})" style="cursor:pointer;flex:1">
-        <span class="sfu-spot-name">${s.name.replace(/</g,'&lt;')}</span>
-        <span class="sfu-spot-coords">${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</span>
-      </span>
-      <button class="sfu-spot-del" onclick="sfuDeleteSpot(${s.id})">&#128465;&#65039;</button>
-    </div>
-  `).join('');
-}
-function sfuGoToSpot(id) {
-  const spot = sfuGetSpots().find(s => s.id === id);
-  if (!spot || typeof S === 'undefined') return;
-  S.lat = spot.lat; S.lon = spot.lon;
-  if (typeof zoomTarget !== 'undefined') zoomTarget = 15;
-  sfuToggle();
-}
-function sfuDeleteSpot(id) {
-  const spots = sfuGetSpots().filter(s => s.id !== id);
-  localStorage.setItem('sf_walk_spots', JSON.stringify(spots));
-  sfuRenderSpots();
-}
-
-function sfuClearData() {
-  if (!confirm('Reset all local Snout First data on this device? This clears pets pinned only in this browser, your notes, saved spots, and settings. Pets already saved to the network are not affected.')) return;
-  ['snoutfirst_pets','snoutfirst_sniffs','snoutfirst_pets_v2','sf_notes','sf_home','sf_lost_pets','sf_vets_custom','sf_food_custom','sf_walk_spots','sf_owner_signature','rv_username','rv_local_uid'].forEach(k => localStorage.removeItem(k));
-  if (typeof toast === 'function') toast('\u{1F5D1}\u{FE0F} Local data cleared! Reloading...');
-  setTimeout(() => location.reload(), 900);
-}
-</script>
-
-<!-- STATS -->
-<div class="stats">
-  <div class="spill">&#128062; Pets: <b id="petCount">0</b></div>
-  <div class="spill">&#128017; Sniffs: <b id="sniffCount">0</b></div>
-  <div class="spill">&#128205; Spots: <b id="spotCount">0</b></div>
-  <div class="spill">&#129313; Clowns: <b id="clownCount">0</b></div>
-</div>
+<!-- HONEST EMPTY STATE (no invented pets) -->
+<div class="empty-hint" id="emptyHint">No pets on the map yet.<br>Tap &#128062; PIN PET, then tap the map to add yours.</div>
 
 <!-- ZOOM -->
 <div class="zoom-axis">
@@ -622,13 +500,19 @@ function sfuClearData() {
 
 <!-- TRAIL PANEL -->
 <div class="side-panel" id="trailPanel">
-  <h3>&#128017; The Trail <button class="close-btn" onclick="toggleTrail()">&#10005;</button></h3>
+  <div class="sf-phead">
+    <span class="sf-ptitle">&#128017; THE TRAIL</span>
+    <button class="sf-ptoggle" type="button" data-panel-toggle="trail"><span class="sf-pt-icon">&#9664;</span><span class="sf-pt-label">hide</span></button>
+  </div>
   <div id="trailContent"></div>
 </div>
 
 <!-- PACK PANEL -->
 <div class="side-panel" id="packPanel">
-  <h3>&#128058; The Pack <button class="close-btn" onclick="togglePack()">&#10005;</button></h3>
+  <div class="sf-phead">
+    <span class="sf-ptitle">&#128058; THE PACK</span>
+    <button class="sf-ptoggle" type="button" data-panel-toggle="pack"><span class="sf-pt-icon">&#9664;</span><span class="sf-pt-label">hide</span></button>
+  </div>
   <div id="packContent"></div>
 </div>
 
@@ -637,7 +521,7 @@ function sfuClearData() {
   <div class="modal">
     <h2>&#128062; Drop a Pet Pin</h2>
     <label>Pet Name</label>
-    <input id="pinName" placeholder="Sir Barkington III">
+    <input id="pinName" maxlength="40" placeholder="Sir Barkington III">
     <label>Species</label>
     <select id="pinSpecies">
       <option value="dog">&#128054; Dog</option>
@@ -650,11 +534,11 @@ function sfuClearData() {
       <option value="other">&#128062; Other</option>
     </select>
     <label>Breed (optional)</label>
-    <input id="pinBreed" placeholder="Golden Chaos Machine">
+    <input id="pinBreed" maxlength="40" placeholder="Golden Chaos Machine">
     <label>Bio (as the pet!)</label>
-    <textarea id="pinBio" rows="2" placeholder="I bark at the mailman because he's suspicious. No further questions."></textarea>
+    <textarea id="pinBio" rows="2" maxlength="200" placeholder="I bark at the mailman because he's suspicious. No further questions."></textarea>
     <label>Personality Tags</label>
-    <input id="pinTags" placeholder="Zoomie King, Treat Goblin, Lap Monster">
+    <input id="pinTags" maxlength="220" placeholder="Zoomie King, Treat Goblin, Lap Monster">
     <label>Current Mood</label>
     <select id="pinMood">
       <option value="playful">&#127934; Playful</option>
@@ -703,6 +587,9 @@ function sfuClearData() {
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
 <!-- Snout First modules -->
+<script src="js/safe-text.js"></script>
+<script src="js/panel-toggle.js"></script>
+<script src="js/dashboard.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/distance.js"></script>
 <script src="js/pet-registration.js"></script>
@@ -783,9 +670,10 @@ function screenToWorld(sx, sy) {
 }
 
 // ── Tile loading (same OSM tiles as ArtSpace) ──
+// Single host as the OpenStreetMap tile rules ask (the a/b/c subdomains are
+// being withdrawn); credit is shown in .map-credit.
 function tileUrl(x, y, z) {
-  const sub = ['a','b','c'][(x + y) % 3];
-  return `https://${sub}.tile.openstreetmap.org/${z}/${x}/${y}.png`;
+  return `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
 }
 
 function loadTile(url) {
@@ -920,6 +808,10 @@ function render() {
 
   // Update HUD
   document.getElementById('petCount').textContent = S.pets.length;
+  if (render._lastCount !== S.pets.length) {
+    render._lastCount = S.pets.length;
+    document.getElementById('emptyHint').style.display = S.pets.length ? 'none' : 'block';
+  }
   document.getElementById('sniffCount').textContent = S.sniffs.length;
   document.getElementById('zoomLev').textContent = Math.round(S.zoom);
 
@@ -955,6 +847,8 @@ cv.addEventListener('pointerdown', e => {
 });
 cv.addEventListener('pointermove', e => {
   if (!dragging) return;
+  // A pet pin is being carried to the dashboard (js/snout-first-service.js): keep the map still.
+  if (window.SnoutFirst && SnoutFirst.isDragging()) return;
   const iz = Math.floor(S.zoom), frac = Math.pow(2, S.zoom - iz);
   const scale = TILE_SZ * frac;
   const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
@@ -988,8 +882,8 @@ cv.addEventListener('pointerup', e => {
 });
 
 // Right-click a pin -> same actions userbox (Wag/Go/Remove), no need to left-click first.
-// Long-press is left alone on purpose: panel-drag.js already uses a 300ms hold to start
-// dragging a pin onto a side panel, so binding hold to "open menu" too would fight that
+// Long-press is left alone on purpose: js/snout-first-service.js already uses a 350ms hold
+// to start carrying a pin onto the dashboard, so binding hold to "open menu" too would fight that
 // gesture. On touch, a plain tap already opens the userbox below.
 cv.addEventListener('contextmenu', e => {
   const petIdx = petAtScreen(e.clientX, e.clientY);
@@ -1073,9 +967,14 @@ function openUserbox(petIdx, screenX, screenY) {
   document.getElementById('ubSpecies').textContent = (pet.breed ? pet.breed + ' \u2022 ' : '') + pet.species;
   document.getElementById('ubBio').textContent = pet.bio || 'No bio yet...';
   document.getElementById('ubBio').style.display = pet.bio ? 'block' : 'none';
-  document.getElementById('ubTags').innerHTML = pet.tags.map(t =>
-    '<span class="ub-tag">' + t + '</span>'
-  ).join('');
+  const tagsEl = document.getElementById('ubTags');
+  tagsEl.textContent = '';
+  (pet.tags || []).forEach(t => {
+    const span = document.createElement('span');
+    span.className = 'ub-tag';
+    span.textContent = t;  // text node: never parsed as markup
+    tagsEl.appendChild(span);
+  });
   document.getElementById('ubMood').textContent = (MOOD_EM[pet.mood] || '') + ' ' + (pet.mood || '');
   const trackerEl = document.getElementById('ubTracker');
   if (pet.trackerSource === 'tractive') {
@@ -1140,14 +1039,14 @@ function buildUbMoreHtml(pet) {
   if (!pet) return '';
   const lines = [];
   lines.push('📅 Pinned: ' + new Date(pet.timestamp).toLocaleString());
-  if (pet.owner_name) lines.push('🧑 Owner: ' + pet.owner_name);
-  if (pet.status) lines.push('🏠 Status: ' + pet.status);
+  if (pet.owner_name) lines.push('🧑 Owner: ' + escHtml(pet.owner_name));
+  if (pet.status) lines.push('🏠 Status: ' + escHtml(pet.status));
   if (pet.stats) {
-    if (pet.stats.lifetime_distance_km) lines.push('🚶 Lifetime walks: ' + pet.stats.lifetime_distance_km.toFixed ? pet.stats.lifetime_distance_km.toFixed(1) + 'km' : pet.stats.lifetime_distance_km + 'km');
-    if (pet.stats.total_walks) lines.push('🎾 Total walks: ' + pet.stats.total_walks);
-    if (pet.stats.total_feedings) lines.push('🍖 Total feedings: ' + pet.stats.total_feedings);
+    if (pet.stats.lifetime_distance_km) lines.push('🚶 Lifetime walks: ' + (Number(pet.stats.lifetime_distance_km) || 0).toFixed(1) + 'km');
+    if (pet.stats.total_walks) lines.push('🎾 Total walks: ' + (Number(pet.stats.total_walks) || 0));
+    if (pet.stats.total_feedings) lines.push('🍖 Total feedings: ' + (Number(pet.stats.total_feedings) || 0));
   }
-  lines.push('📍 ' + pet.lat.toFixed(5) + ', ' + (pet.lon ?? pet.lng).toFixed(5));
+  lines.push('📍 ' + Number(pet.lat).toFixed(5) + ', ' + Number(pet.lon ?? pet.lng).toFixed(5));
   return lines.map(l => '<div>' + l + '</div>').join('');
 }
 document.getElementById('petUserbox').addEventListener('pointerdown', e => {
@@ -1197,13 +1096,10 @@ function deletePetFromUserbox() {
   if (activeUserboxPetIndex < 0) return;
   const pet = S.pets[activeUserboxPetIndex];
   if (!confirm('Remove ' + pet.name + ' from the map?')) return;
-  // Remove sniffs for this pet
-  S.sniffs = S.sniffs.filter(s => s.petIndex !== activeUserboxPetIndex);
-  // Fix sniff petIndex references
-  S.sniffs.forEach(s => { if (s.petIndex > activeUserboxPetIndex) s.petIndex--; });
-  S.pets.splice(activeUserboxPetIndex, 1);
-  savePets();
+  const idx = activeUserboxPetIndex;
   closeUserbox();
+  removePetAt(idx);
+  savePets();
   toast(pet.name + ' removed \u{1F43E}');
 }
 
@@ -1224,9 +1120,15 @@ function openPinModal() {
 function closePinModal() {
   document.getElementById('pinModal').classList.remove('show');
   S._pendingPin = null;
+  if (S._editFbId) {
+    S._editFbId = null;
+    document.querySelector('#pinModal h2').innerHTML = '&#128062; Drop a Pet Pin';
+    ['pinName', 'pinBreed', 'pinBio', 'pinTags'].forEach(id => { document.getElementById(id).value = ''; });
+  }
 }
 
 function savePetPin() {
+  if (S._editFbId) { saveEditedPet(S._editFbId); return; }
   const name = document.getElementById('pinName').value.trim();
   if (!name) { toast('Every pet needs a name! \u{1F43E}'); return; }
   const pet = {
@@ -1269,6 +1171,7 @@ function toggleTrail() {
   const panel = document.getElementById('trailPanel');
   panel.classList.toggle('show', S.trailOpen);
   if (S.trailOpen) renderTrail();
+  if (window.sfPanels) sfPanels.sync('trail');
 }
 
 function renderTrail() {
@@ -1286,14 +1189,14 @@ function renderTrail() {
     return '<div class="sniff">' +
       '<div class="sniff-head">' +
         '<span>' + (SPECIES_EM[pet.species] || '\u{1F43E}') + '</span>' +
-        '<span class="sniff-name">' + pet.name + '</span>' +
+        '<span class="sniff-name">' + escHtml(pet.name) + '</span>' +
         '<span class="sniff-time">' + ago + '</span>' +
       '</div>' +
-      '<div class="sniff-caption">' + s.caption + '</div>' +
+      '<div class="sniff-caption">' + escHtml(s.caption) + '</div>' +
       '<div class="sniff-mood">' + (MOOD_EM[s.mood] || '') + '</div>' +
       '<div class="wag-row">' +
         '<button class="wag-btn" onclick="wagSniff(' + origIdx + ')">\u{1F43E}</button>' +
-        '<span class="wag-count">' + s.wags + ' tail wag' + (s.wags !== 1 ? 's' : '') + '</span>' +
+        '<span class="wag-count">' + (Number(s.wags) || 0) + ' tail wag' + (s.wags !== 1 ? 's' : '') + '</span>' +
       '</div>' +
     '</div>' +
     '<div class="bone-divider">\u2739 \u2739 \u2739</div>';
@@ -1316,6 +1219,7 @@ function togglePack() {
   const panel = document.getElementById('packPanel');
   panel.classList.toggle('show', S.packOpen);
   if (S.packOpen) renderPack();
+  if (window.sfPanels) sfPanels.sync('pack');
 }
 
 function renderPack() {
@@ -1326,10 +1230,10 @@ function renderPack() {
   }
   el.innerHTML = S.pets.map((pet, i) =>
     '<div class="pet-card" onclick="panToPet(' + i + ')">' +
-      '<div class="name">' + (SPECIES_EM[pet.species] || '\u{1F43E}') + ' ' + pet.name + '</div>' +
-      '<div class="species">' + (pet.breed || pet.species) + '</div>' +
-      (pet.bio ? '<div class="bio">"' + pet.bio + '"</div>' : '') +
-      '<div class="tags">' + pet.tags.map(t => '<span class="tag">' + t + '</span>').join('') + '</div>' +
+      '<div class="name">' + (SPECIES_EM[pet.species] || '\u{1F43E}') + ' ' + escHtml(pet.name) + '</div>' +
+      '<div class="species">' + escHtml(pet.breed || pet.species) + '</div>' +
+      (pet.bio ? '<div class="bio">"' + escHtml(pet.bio) + '"</div>' : '') +
+      '<div class="tags">' + (pet.tags || []).map(t => '<span class="tag">' + escHtml(t) + '</span>').join('') + '</div>' +
       '<div class="mood">' + (MOOD_EM[pet.mood] || '') + '</div>' +
     '</div>'
   ).join('<div class="bone-divider">\u2739 \u2739 \u2739</div>');
@@ -1348,24 +1252,50 @@ function panToRandom() {
   if (S.pets.length) panToPet(Math.floor(Math.random() * S.pets.length));
 }
 
-// ── Search ──
+// ── Search ("sniff sniff") ──
+// The box follows the open tab (js/dashboard.js): with the Vets tab open it
+// searches vets, with the Food tab open it searches food banks. Otherwise
+// typing filters the pets in both panels, Enter goes to the first matching
+// pet, and if no pet matches the text is looked up as a place.
 document.getElementById('searchInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') searchPlace();
+  if (e.key !== 'Enter') return;
+  if (window.sfDash && sfDash.submitSearch()) return;
+  if (window.sfDash && sfDash.focusFirstMatch()) return;
+  searchPlace();
 });
+function sfSearchButton() {
+  if (window.sfDash && sfDash.submitSearch()) return;
+  searchPlace();
+}
+
+// Look a place or postcode up with Nominatim (OpenStreetMap). Returns
+// { lat, lon, name, label }, or null when nothing matches; throws when the
+// service can't be reached. Used by the pet search, the vets and food banks.
+async function geocodePlace(text) {
+  const q = String(text == null ? '' : text).trim().slice(0, 120);
+  if (!q) return null;
+  const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q) + '&limit=1', {
+    headers: { 'User-Agent': 'SnoutFirst/1.0' }
+  });
+  if (!res.ok) throw new Error('place search ' + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data) || !data.length) return null;
+  const lat = parseFloat(data[0].lat), lon = parseFloat(data[0].lon);
+  if (!isFinite(lat) || !isFinite(lon)) return null;
+  const label = String(data[0].display_name || q);
+  return { lat, lon, name: label.split(',')[0].trim() || q, label };
+}
 
 async function searchPlace() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
   try {
-    const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q) + '&limit=1', {
-      headers: { 'User-Agent': 'SnoutFirst/1.0' }
-    });
-    const data = await res.json();
-    if (data.length) {
-      S.lat = parseFloat(data[0].lat);
-      S.lon = parseFloat(data[0].lon);
+    const place = await geocodePlace(q);
+    if (place) {
+      S.lat = place.lat;
+      S.lon = place.lon;
       zoomTarget = 13;
-      toast('Sniffed out: ' + data[0].display_name.split(',')[0] + ' \u{1F43E}');
+      toast('Sniffed out: ' + place.name + ' \u{1F43E}');
     } else {
       toast('Couldn\'t sniff that out... try again? \u{1F3BE}');
     }
@@ -1414,55 +1344,72 @@ function timeAgo(ts) {
   return Math.floor(hrs / 24) + 'd ago';
 }
 
-// ── Demo pets ──
-function seedDemoPets() {
-  if (S.pets.length) return;
-  const demos = [
-    { name:'Sir Barkington', species:'dog', breed:'Golden Retriever', bio:'I bark at the mailman because he\'s suspicious. No further questions.', tags:['Zoomie King','Treat Goblin'], mood:'chaos', lat:51.512, lon:-0.09 },
-    { name:'Duchess Whiskers', species:'cat', breed:'British Shorthair', bio:'I own this flat. The human just pays rent.', tags:['Lap Monster','Night Zoomie'], mood:'majestic', lat:51.507, lon:-0.076 },
-    { name:'Captain Floof', species:'dog', breed:'Samoyed', bio:'A cloud with legs and opinions.', tags:['Cloud Boy','Dramatic'], mood:'playful', lat:48.856, lon:2.352 },
-    { name:'Professor Nibbles', species:'rabbit', breed:'Holland Lop', bio:'I have chewed every cable in this house. No regrets.', tags:['Cable Destroyer','Binky Expert'], mood:'chaos', lat:52.52, lon:13.405 },
-    { name:'DJ Feathers', species:'bird', breed:'Cockatiel', bio:'My mixtape drops at 6 AM every morning. Whether you like it or not.', tags:['Early Riser','Seed Critic'], mood:'playful', lat:40.416, lon:-3.703 },
-    { name:'Lord Puddles', species:'fish', breed:'Betta', bio:'I flare at my own reflection because that fish had it coming.', tags:['Bubble Builder','Drama Fish'], mood:'majestic', lat:55.953, lon:-3.188 },
-  ];
-  demos.forEach(d => {
-    d.timestamp = Date.now() - Math.random() * 86400000;
-    S.pets.push(d);
-    S.sniffs.push({
-      petIndex: S.pets.length - 1,
-      caption: d.bio,
-      mood: d.mood,
-      timestamp: d.timestamp,
-      wags: Math.floor(Math.random() * 20),
-      wagged: false,
-    });
-  });
-  savePets();
+// ── No invented pets ──
+// Snout First used to seed six made-up pets (Sir Barkington & co.) with random
+// wag counts whenever the map was empty. House rule: real live data only.
+// This removes those exact made-up entries from browsers that saved them.
+function removeOldDemoPets() {
+  const OLD_DEMOS = {
+    'Sir Barkington': [51.512, -0.09], 'Duchess Whiskers': [51.507, -0.076],
+    'Captain Floof': [48.856, 2.352], 'Professor Nibbles': [52.52, 13.405],
+    'DJ Feathers': [40.416, -3.703], 'Lord Puddles': [55.953, -3.188]
+  };
+  let removed = 0;
+  for (let i = S.pets.length - 1; i >= 0; i--) {
+    const p = S.pets[i], d = OLD_DEMOS[p.name];
+    if (d && !p._fbId && p.lat === d[0] && p.lon === d[1]) { removePetAt(i); removed++; }
+  }
+  if (removed) savePets();
+}
+
+// Remove one pet (and its sniffs) from the map state, keeping sniff indexes right.
+function removePetAt(idx) {
+  S.sniffs = S.sniffs.filter(s => s.petIndex !== idx);
+  S.sniffs.forEach(s => { if (s.petIndex > idx) s.petIndex--; });
+  S.pets.splice(idx, 1);
+  if (activeUserboxPetIndex === idx) closeUserbox();
+  else if (activeUserboxPetIndex > idx) activeUserboxPetIndex--;
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  FIREBASE INTEGRATION
+//  Sharing switches on only when js/firebase-config.js is filled in AND
+//  anonymous sign-in works. Otherwise everything stays on this device and
+//  a small note says so (see #netNote).
 // ═══════════════════════════════════════════════════════════════
 let firebaseReady = false;
 let activeWalkTracker = null;
 let activeWalkPetId = null;
-const DEFAULT_CHANNEL = 'snoutfirst_global';
+
+function setNetNote() {
+  const el = document.getElementById('netNote');
+  if (!el) return;
+  const notes = {
+    '':       ['\u{1F310} Shared map on', 'Pets you pin are shared with other Snout First visitors.'],
+    connecting: ['\u{23F3} Connecting\u2026', 'Signing in to the shared map. Until then everything stays in this browser.'],
+    config:   ['\u{1F4F1} This device only', 'Sharing is not set up yet, so pets, walks and spots stay in this browser.'],
+    signin:   ['\u{1F4F1} This device only', 'Could not sign in to the shared map, so everything stays in this browser for now.'],
+    sdk:      ['\u{1F4F1} This device only', 'The sharing library did not load, so everything stays in this browser for now.']
+  };
+  const n = notes[firebaseOffReason] || notes.config;
+  el.textContent = n[0];
+  el.title = n[1];
+  el.onclick = () => toast(n[1]);  // phones have no hover, so tap shows why
+  el.style.display = 'inline';
+}
 
 async function initFirebaseIntegration() {
-  if (!initFirebase()) {
-    console.warn('Firebase not available — running in local mode');
-    return;
-  }
+  if (!initFirebase()) { setNetNote(); return; }
+  firebaseOffReason = 'connecting';
+  setNetNote();
   const uid = await ensureAuth();
-  if (!uid) {
-    console.warn('Auth failed — running in local mode');
-    return;
-  }
+  if (!uid) { setNetNote(); return; }
   firebaseReady = true;
+  setNetNote();
 
   // Prompt for username if not set
   if (!localStorage.getItem('rv_username')) {
-    const name = prompt('What\'s your name? (for pet community)', 'Anonymous Walker');
+    const name = prompt('What\'s your name? (shown to the pet community, max 30 characters)', 'Anonymous Walker');
     if (name) setUserName(name);
   }
 
@@ -1472,79 +1419,89 @@ async function initFirebaseIntegration() {
     toast(notif.message);
   });
 
-  // Load Firebase pets and merge with local
-  await syncPetsFromFirebase();
-
-  // Watch for wandering pets
-  watchForDisconnects(DEFAULT_CHANNEL, (petId, data) => {
-    const wp = new WanderingPet(petId, DEFAULT_CHANNEL, data.lat, data.lng, data);
-    wp.start();
-  });
-
-  // Listen for real-time pet updates
-  db.ref('snoutfirst/pets').on('child_changed', () => {
-    syncPetsFromFirebase();
-  });
+  // Live pet list: one download at start, then only the pets that change.
+  listenForPets();
 
   toast('🐾 Connected to Snout First network!');
 }
 
-async function syncPetsFromFirebase() {
-  if (!firebaseReady) return;
-  try {
-    const fbPets = await getAllPets();
-    // Merge Firebase pets into local state
-    fbPets.forEach(fbPet => {
-      const exists = S.pets.findIndex(p => p._fbId === fbPet.id);
-      const localPet = {
-        _fbId: fbPet.id,
-        name: fbPet.name,
-        species: fbPet.species || 'dog',
-        breed: fbPet.breed || '',
-        bio: fbPet.bio || '',
-        tags: fbPet.personality_tags || [],
-        mood: fbPet.mood || 'happy',
-        lat: fbPet.home_lat,
-        lon: fbPet.home_lng,
-        timestamp: fbPet.created_at,
-        status: fbPet.status || 'home',
-        current_walker: fbPet.current_walker,
-        registered_by: fbPet.registered_by,
-        owner_name: fbPet.owner_name,
-        photo_base64: fbPet.photo_base64 || '',
-        stats: fbPet.stats || {}
-      };
-      if (exists >= 0) {
-        S.pets[exists] = localPet;
-      } else {
-        S.pets.push(localPet);
-        // Add sniff entry
-        S.sniffs.push({
-          petIndex: S.pets.length - 1,
-          caption: fbPet.bio || fbPet.name + ' joined the pack!',
-          mood: fbPet.mood || 'happy',
-          timestamp: fbPet.created_at,
-          wags: 0,
-          wagged: false
-        });
-      }
+// Shared pet record → the shape the map uses.
+function toLocalPet(id, fbPet) {
+  const tags = fbPet.personality_tags;
+  return {
+    _fbId: id,
+    name: String(fbPet.name || ''),
+    species: fbPet.species || 'dog',
+    breed: fbPet.breed || '',
+    bio: fbPet.bio || '',
+    tags: Array.isArray(tags) ? tags : (tags && typeof tags === 'object' ? Object.values(tags) : []),
+    mood: fbPet.mood || 'happy',
+    lat: Number(fbPet.home_lat),
+    lon: Number(fbPet.home_lng),
+    timestamp: fbPet.created_at,
+    status: fbPet.status || 'home',
+    current_walker: fbPet.current_walker,
+    registered_by: fbPet.owner_uid || fbPet.registered_by,
+    owner_name: fbPet.owner_name,
+    stats: fbPet.stats || {}
+  };
+}
+
+// Add or update ONE pet (child_added / child_changed).
+function upsertFirebasePet(id, fbPet) {
+  const idx = S.pets.findIndex(p => p._fbId === id);
+  if (!fbPet || fbPet.active === false) { if (idx >= 0) removePetAt(idx); return; }
+  const localPet = toLocalPet(id, fbPet);
+  if (!isFinite(localPet.lat) || !isFinite(localPet.lon)) return;
+  if (idx >= 0) {
+    localPet.lost = S.pets[idx].lost;  // keep this device's lost flag
+    S.pets[idx] = localPet;
+  } else {
+    S.pets.push(localPet);
+    S.sniffs.push({
+      petIndex: S.pets.length - 1,
+      caption: localPet.bio || localPet.name + ' joined the pack!',
+      mood: localPet.mood,
+      timestamp: localPet.timestamp,
+      owner_uid: localPet.registered_by || '',
+      wags: 0,
+      wagged: false
     });
-  } catch (e) {
-    console.warn('Firebase sync error:', e);
   }
+  if (S.packOpen) renderPack();
+  if (S.trailOpen) renderTrail();
+}
+
+function listenForPets() {
+  // Drop shared pets remembered from last visit; the live list re-adds the
+  // ones that still exist (so pets deleted elsewhere don't linger here).
+  for (let i = S.pets.length - 1; i >= 0; i--) if (S.pets[i]._fbId) removePetAt(i);
+  const ref = db.ref('snoutfirst/pets');
+  const onErr = e => console.warn('Pet list not readable:', e.code || e.message);
+  ref.on('child_added', snap => upsertFirebasePet(snap.key, snap.val()), onErr);
+  ref.on('child_changed', snap => upsertFirebasePet(snap.key, snap.val()), onErr);
+  ref.on('child_removed', snap => {
+    const idx = S.pets.findIndex(p => p._fbId === snap.key);
+    if (idx >= 0) removePetAt(idx);
+  }, onErr);
+}
+
+function findPetByFbId(petId) {
+  return S.pets.find(p => p._fbId === petId) || null;
 }
 
 // ── Handler functions (called by PETuserBox) ──
 async function handleTakeOut(petId) {
   if (!firebaseReady) { toast('Not connected to network 🐾'); return; }
-  const walkId = await takeOutPet(petId, DEFAULT_CHANNEL);
+  const pet = findPetByFbId(petId);
+  if (pet && pet.registered_by !== getUid()) { toast('Only ' + pet.name + '\'s owner can take them out 🐾'); return; }
+  const walkId = await takeOutPet(petId).catch(e => { console.warn(e); return null; });
   if (walkId) {
     activeWalkPetId = petId;
-    activeWalkTracker = new WalkTracker(petId, walkId, DEFAULT_CHANNEL);
+    activeWalkTracker = new WalkTracker(petId, walkId);
     activeWalkTracker.start();
-    toast('🚶 Let\'s go for a walk! 🐾');
+    toast('🚶 Let\'s go for a walk! Your route stays on this device 🐾');
     closeUserbox();
-    await syncPetsFromFirebase();
   } else {
     toast('This pet is not available right now 🐾');
   }
@@ -1552,37 +1509,69 @@ async function handleTakeOut(petId) {
 
 async function handleReturnHome(petId) {
   if (!firebaseReady) return;
-  await returnPetHome(petId, DEFAULT_CHANNEL, activeWalkTracker);
-  const dist = activeWalkTracker ? activeWalkTracker.getDistanceKm() : 0;
+  const walk = await returnPetHome(petId, activeWalkTracker).catch(e => { console.warn(e); return null; });
+  const dist = walk ? walk.distance_km : 0;
   activeWalkTracker = null;
   activeWalkPetId = null;
-  toast(`🏠 Pet returned home! ${dist}km walked 🐾`);
   closeUserbox();
-  await syncPetsFromFirebase();
-}
-
-async function handlePickUp(petId) {
-  if (!firebaseReady) return;
-  const walkId = await pickUpWanderingPet(petId, DEFAULT_CHANNEL);
-  if (walkId) {
-    activeWalkPetId = petId;
-    activeWalkTracker = new WalkTracker(petId, walkId, DEFAULT_CHANNEL);
-    activeWalkTracker.start();
-    toast('🎾 Picked up wandering pet! 🐾');
-    closeUserbox();
+  toast(`🏠 Pet returned home! ${dist}km walked 🐾`);
+  // Walks stay on this device unless you say yes here.
+  if (walk && walk.distance_km > 0 &&
+      confirm('Share this walk with the Snout First map?\n\nOthers would see the distance, time and a rough route (rounded to about 100 m). Choose Cancel to keep it on this device only.')) {
+    const pet = findPetByFbId(petId);
+    const ok = await shareWalk(walk, pet ? pet.name : '');
+    toast(ok ? '🌐 Walk shared 🐾' : 'Could not share the walk — it is still saved on this device 🐾');
   }
 }
 
-function handleFeedPet(petId, petName) {
-  const section = document.getElementById('pet-feed-section-' + petId);
+function handleFeedPet(petId) {
+  const pet = findPetByFbId(petId);
+  const section = document.getElementById('pet-feed-section-' + safeId(petId));
   if (section) {
     if (section.innerHTML) { section.innerHTML = ''; return; }
-    renderFeedingForm(petId, petName, section);
+    renderFeedingForm(petId, pet ? pet.name : '', section);
   }
 }
 
+// ✏️ on a shared pet: the owner edits its details in the same form used to pin it.
 function handleEditPet(petId) {
-  toast('Edit coming soon! 🐾');
+  const pet = findPetByFbId(petId);
+  if (!pet) { toast('That pet is not on the map any more 🐾'); return; }
+  if (pet.registered_by && pet.registered_by !== getUid()) { toast('Only ' + pet.name + '\'s owner can edit them 🐾'); return; }
+  if (!firebaseReady) { toast('Not connected to network 🐾'); return; }
+  document.getElementById('pinName').value = pet.name || '';
+  document.getElementById('pinSpecies').value = pet.species || 'dog';
+  document.getElementById('pinBreed').value = pet.breed || '';
+  document.getElementById('pinBio').value = pet.bio || '';
+  document.getElementById('pinTags').value = (pet.tags || []).join(', ');
+  const mood = document.getElementById('pinMood');
+  if ([...mood.options].some(o => o.value === pet.mood)) mood.value = pet.mood;
+  S._editFbId = petId;
+  document.querySelector('#pinModal h2').textContent = '\u270F\uFE0F Edit ' + (pet.name || 'pet');
+  closeUserbox();
+  openPinModal();
+}
+async function saveEditedPet(petId) {
+  const name = document.getElementById('pinName').value.trim();
+  if (!name) { toast('Every pet needs a name! \u{1F43E}'); return; }
+  const species = document.getElementById('pinSpecies').value;
+  const update = {
+    name: name.slice(0, PET_LIMITS.name),
+    species: String(species).slice(0, PET_LIMITS.species),
+    emoji: getSpeciesEmoji(species),
+    breed: document.getElementById('pinBreed').value.trim().slice(0, PET_LIMITS.breed),
+    bio: document.getElementById('pinBio').value.trim().slice(0, PET_LIMITS.bio),
+    personality_tags: cleanTags(document.getElementById('pinTags').value.split(',')),
+    mood: document.getElementById('pinMood').value.slice(0, PET_LIMITS.mood)
+  };
+  try {
+    await db.ref('snoutfirst/pets/' + petId).update(update);
+    closePinModal();
+    toast('\u270F\uFE0F ' + name + ' updated!');
+  } catch (e) {
+    console.warn('Pet edit failed:', e);
+    toast('Could not save the changes: ' + (e.code || e.message));
+  }
 }
 
 // ── Override savePetPin to also save to Firebase ──
@@ -1592,7 +1581,7 @@ savePetPin = async function() {
   if (!name) { toast('Every pet needs a name! 🐾'); return; }
 
   const petData = {
-    name,
+    name: name.slice(0, 40),
     species: document.getElementById('pinSpecies').value,
     breed: document.getElementById('pinBreed').value.trim(),
     bio: document.getElementById('pinBio').value.trim(),
@@ -1603,18 +1592,25 @@ savePetPin = async function() {
     contact: ''
   };
 
-  // Check for photo input
+  // Photo: kept on this device only (never sent to the shared database)
+  let photo = '';
   const photoInput = document.getElementById('pinPhoto');
   if (photoInput && photoInput.files && photoInput.files[0]) {
     try {
-      petData.photo_base64 = await photoToBase64(photoInput.files[0]);
+      photo = await photoToBase64(photoInput.files[0]);
     } catch (e) { console.warn('Photo encode failed:', e); }
   }
 
   if (firebaseReady) {
-    const petId = await registerPet(petData);
-    toast(`${getSpeciesEmoji(petData.species)} ${name} registered on Snout First!`);
-    await syncPetsFromFirebase();
+    try {
+      const petId = await registerPet(petData);
+      if (photo) savePetPhotoLocally(petId, photo);
+      toast(`${getSpeciesEmoji(petData.species)} ${name} registered on Snout First!`);
+    } catch (e) {
+      console.warn('Pet not saved to the shared map:', e);
+      toast('Could not save ' + name + ' to the shared map — please try again 🐾');
+      return;
+    }
   } else {
     // Local fallback (original behavior)
     const pet = {
@@ -1626,7 +1622,8 @@ savePetPin = async function() {
       mood: petData.mood,
       lat: petData.lat,
       lon: petData.lng,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      owner_uid: getUid()
     };
     S.pets.push(pet);
     S.sniffs.push({
@@ -1634,11 +1631,12 @@ savePetPin = async function() {
       caption: pet.bio || pet.name + ' just joined the pack!',
       mood: pet.mood,
       timestamp: pet.timestamp,
+      owner_uid: getUid(),
       wags: 0,
       wagged: false
     });
     savePets();
-    toast(`${getSpeciesEmoji(pet.species)} ${name} pinned to the map!`);
+    toast(`${getSpeciesEmoji(pet.species)} ${name} pinned to this device's map!`);
   }
 
   closePinModal();
@@ -1654,6 +1652,9 @@ savePetPin = async function() {
 
 // ── Override openUserbox to use PETuserBox for Firebase pets ──
 const _originalOpenUserbox = openUserbox;
+// The shared-pet view replaces the userbox contents, so keep the original
+// layout to put back before showing a device-only pet.
+const _localUserboxHtml = document.getElementById('petUserbox').innerHTML;
 openUserbox = function(petIdx, screenX, screenY) {
   const pet = S.pets[petIdx];
   if (!pet) return;
@@ -1682,12 +1683,12 @@ openUserbox = function(petIdx, screenX, screenY) {
       current_walker: pet.current_walker,
       registered_by: pet.registered_by,
       owner_name: pet.owner_name,
-      photo_base64: pet.photo_base64,
       stats: pet.stats || {},
       created_at: pet.timestamp
     }, document.getElementById('ub-fb-content'));
   } else {
     // Original local userbox
+    if (!document.getElementById('ubTags')) ub.innerHTML = _localUserboxHtml;
     _originalOpenUserbox(petIdx, screenX, screenY);
     return;
   }
@@ -1766,7 +1767,7 @@ drawPets = function() {
 
 // ── Init ──
 loadPets();
-seedDemoPets();
+removeOldDemoPets();   // no invented pets — an empty map shows an honest hint instead
 addPhotoToModal();
 render();
 
@@ -1780,9 +1781,29 @@ setTimeout(initFirebaseIntegration, 500);
 <script src="js/lost-social.js"></script>
 <script src="js/panel-left.js"></script>
 <script src="js/panel-right.js"></script>
+<script src="js/vets.js"></script>
+<script src="js/foodbanks.js"></script>
 <script src="js/panel-drag.js"></script>
+<script src="js/snout-first-service.js"></script>
 <script src="js/doglost-embed.js"></script>
 <script src="js/map-spots.js"></script>
 <script src="js/clown-markers.js"></script>
+<script src="https://rudventur.github.io/RudVentur.com/embed/useRbox.js" data-service="map-merger" defer></script>
+<script src="js/snout-first-userbox.js" defer></script>
+
+<script>
+// ── Panels: one hide / show pattern for every panel (js/panel-toggle.js) ──
+// The dashboard (left) and the lists (right) register themselves in
+// js/panel-left.js and js/panel-right.js. Docked panels remember their state;
+// pop-overs (Trail, Pack, useRbox) open closed each time.
+if (window.sfPanels) {
+  sfPanels.register({ id: 'bar', el: '#sfBar', label: 'the top bar', side: 'top' });
+  sfPanels.register({ id: 'stats', el: '#sfStats', label: 'the stats', side: 'top' });
+  sfPanels.register({ id: 'trail', el: '#trailPanel', label: 'the trail', side: 'left', remember: false,
+    read: () => !!S.trailOpen, apply: open => { if (!!S.trailOpen !== open) toggleTrail(); } });
+  sfPanels.register({ id: 'pack', el: '#packPanel', label: 'the pack', side: 'left', remember: false,
+    read: () => !!S.packOpen, apply: open => { if (!!S.packOpen !== open) togglePack(); } });
+}
+</script>
 </body>
 </html>

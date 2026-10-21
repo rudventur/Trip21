@@ -131,9 +131,9 @@ window.renderLostSocialButtons = function(pet, container) {
 
   const btns = PLATFORMS.map(p => {
     if (p.isCopy) {
-      return `<button class="lsb-btn" style="--lsb-c:${p.color}" onclick="lsbCopy('${encodeURIComponent(buildText(pet, mapLink))}')">${p.label}</button>`;
+      return `<button class="lsb-btn" style="--lsb-c:${p.color}" onclick="lsbCopy()">${p.label}</button>`;
     }
-    return `<a class="lsb-btn" style="--lsb-c:${p.color}" href="${p.build(pet, mapLink)}" target="_blank" rel="noopener">${p.label}</a>`;
+    return `<a class="lsb-btn" style="--lsb-c:${p.color}" href="${escHtml(p.build(pet, mapLink))}" target="_blank" rel="noopener">${p.label}</a>`;
   }).join('');
 
   container.innerHTML = `
@@ -164,8 +164,8 @@ window.renderLostSocialButtons = function(pet, container) {
   `;
 
   window.lsbNativeShare = () => tryNativeShare(pet);
-  window.lsbCopy = (encoded) => {
-    const text = decodeURIComponent(encoded);
+  window.lsbCopy = () => {
+    const text = buildText(pet, mapLink);
     navigator.clipboard.writeText(text).then(() => {
       if (typeof toast === 'function') toast('📋 Copied! Paste anywhere 🐾');
     }).catch(() => {

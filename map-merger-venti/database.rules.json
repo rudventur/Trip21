@@ -1,0 +1,294 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "snoutfirst": {
+      "pets": {
+        ".read": "auth != null",
+        ".indexOn": [
+          "owner_uid",
+          "active"
+        ],
+        "$petId": {
+          ".write": "auth != null && (data.exists() ? data.child('owner_uid').val() === auth.uid : newData.child('owner_uid').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['name', 'species', 'home_lat', 'home_lng', 'owner_uid', 'registered_by', 'status', 'created_at', 'active']) && $petId.matches(/^[-A-Za-z0-9_]{1,40}$/)",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 40 && newData.val().length >= 1"
+          },
+          "species": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "breed": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "emoji": {
+            ".validate": "newData.isString() && newData.val().length <= 8"
+          },
+          "bio": {
+            ".validate": "newData.isString() && newData.val().length <= 200"
+          },
+          "personality_tags": {
+            "$i": {
+              ".validate": "$i.matches(/^[0-7]$/) && newData.isString() && newData.val().length <= 24"
+            }
+          },
+          "home_lat": {
+            ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+          },
+          "home_lng": {
+            ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+          },
+          "owner_uid": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          "registered_by": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          "owner_name": {
+            ".validate": "newData.isString() && newData.val().length <= 30"
+          },
+          "notify_walks": {
+            ".validate": "newData.isBoolean()"
+          },
+          "notify_feedings": {
+            ".validate": "newData.isBoolean()"
+          },
+          "status": {
+            ".validate": "newData.val() === 'home' || newData.val() === 'walking'"
+          },
+          "current_walker": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          "mood": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "created_at": {
+            ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)"
+          },
+          "active": {
+            ".validate": "newData.isBoolean()"
+          },
+          "stats": {
+            "lifetime_distance_km": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+            },
+            "total_walks": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && newData.val() % 1 === 0"
+            },
+            "total_feedings": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && newData.val() % 1 === 0"
+            },
+            "last_walked": {
+              ".validate": "newData.isNumber() && newData.val() <= now"
+            },
+            "last_fed": {
+              ".validate": "newData.isNumber() && newData.val() <= now"
+            },
+            "last_fed_by": {
+              ".validate": "newData.isString() && newData.val().length <= 30"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "lost": {
+        ".read": "auth != null",
+        "$key": {
+          ".write": "auth != null && (data.exists() ? data.child('owner_uid').val() === auth.uid : newData.child('owner_uid').val() === auth.uid) && ($key.beginsWith(auth.uid + '_') || root.child('snoutfirst/pets').child($key).child('owner_uid').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['name', 'lostAt', 'active', 'owner_uid']) && $key.matches(/^[-A-Za-z0-9_]{1,80}$/)",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 40 && newData.val().length >= 1"
+          },
+          "species": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "lat": {
+            ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+          },
+          "lon": {
+            ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+          },
+          "lostAt": {
+            ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() || newData.val() === now : newData.val() === now)"
+          },
+          "active": {
+            ".validate": "newData.isBoolean()"
+          },
+          "owner": {
+            ".validate": "newData.isString() && newData.val().length <= 30"
+          },
+          "owner_uid": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "shared_walks": {
+        ".read": "auth != null",
+        "$uid": {
+          "$walkId": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['owner_uid', 'distance_km', 'duration_mins', 'started_at', 'ended_at']) && $walkId.matches(/^[-A-Za-z0-9_]{1,40}$/)",
+            "owner_uid": {
+              ".validate": "newData.val() === auth.uid"
+            },
+            "pet_id": {
+              ".validate": "newData.isString() && newData.val().length <= 40"
+            },
+            "pet_name": {
+              ".validate": "newData.isString() && newData.val().length <= 40"
+            },
+            "started_at": {
+              ".validate": "newData.isNumber() && newData.val() <= now"
+            },
+            "ended_at": {
+              ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)"
+            },
+            "distance_km": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500"
+            },
+            "duration_mins": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1440"
+            },
+            "path": {
+              "$i": {
+                ".validate": "$i.matches(/^(0|[1-9][0-9]?|1[0-9][0-9])$/) && newData.hasChildren(['lat', 'lng'])",
+                "lat": {
+                  ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+                },
+                "lng": {
+                  ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    },
+    "clown_markers": {
+      "snoutfirst_global": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.hasChildren(['lat', 'lng', 'name', 'last_updated', 'status'])",
+          "lat": {
+            ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+          },
+          "lng": {
+            ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+          },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 30 && newData.val().length >= 1"
+          },
+          "emoji": {
+            ".validate": "newData.isString() && newData.val().length <= 8"
+          },
+          "last_updated": {
+            ".validate": "newData.val() === now"
+          },
+          "pet_id": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "pet_emoji": {
+            ".validate": "newData.isString() && newData.val().length <= 8"
+          },
+          "status": {
+            ".validate": "newData.val() === 'active' || newData.val() === 'stale'"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "feeding_log": {
+      "$petId": {
+        ".read": "auth != null",
+        ".indexOn": [
+          "timestamp"
+        ],
+        "$feedId": {
+          ".write": "auth != null && (data.exists() ? (data.child('fed_by_uid').val() === auth.uid && !newData.exists()) : (newData.child('fed_by_uid').val() === auth.uid && root.child('snoutfirst/pets').child($petId).exists()))",
+          ".validate": "newData.hasChildren(['fed_by_uid', 'fed_by_name', 'timestamp', 'food_type'])",
+          "fed_by_uid": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          "fed_by_name": {
+            ".validate": "newData.isString() && newData.val().length <= 30"
+          },
+          "timestamp": {
+            ".validate": "newData.val() === now"
+          },
+          "food_type": {
+            ".validate": "newData.isString() && newData.val().length <= 20 && newData.val().length >= 1"
+          },
+          "food_brand": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "amount": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "notes": {
+            ".validate": "newData.isString() && newData.val().length <= 200"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".indexOn": [
+          "timestamp",
+          "read"
+        ],
+        "$id": {
+          ".write": "auth != null && (auth.uid === $uid || (!data.exists() && newData.child('by_uid').val() === auth.uid))",
+          ".validate": "newData.hasChildren(['type', 'message', 'timestamp', 'read', 'by_uid'])",
+          "type": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "pet_id": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "pet_name": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "by_uid": {
+            ".validate": "data.exists() ? newData.val() === data.val() : newData.val() === auth.uid"
+          },
+          "by_name": {
+            ".validate": "newData.isString() && newData.val().length <= 30"
+          },
+          "message": {
+            ".validate": "newData.isString() && newData.val().length <= 160 && newData.val().length >= 1"
+          },
+          "timestamp": {
+            ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)"
+          },
+          "read": {
+            ".validate": "newData.isBoolean() && (data.exists() || auth.uid === $uid || newData.val() === false)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    }
+  }
+}

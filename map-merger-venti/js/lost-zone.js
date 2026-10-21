@@ -11,6 +11,7 @@ let lostZoneActive = false;
 let lostZonePet = null;
 let lostZoneFrame = 0;
 const BASE_RADIUS_M = 500; // metres — the initial search zone
+let zoneRadiusM = BASE_RADIUS_M; // grows with updateLostZoneRadius()
 
 // ── Metres to pixels at current zoom ──
 function metresToPixels(metres) {
@@ -22,6 +23,7 @@ function metresToPixels(metres) {
 // ── Draw the zone on the existing canvas ──
 function drawLostZoneOverlay() {
   if (!lostZoneActive || !lostZonePet) return;
+  window.updateLostZoneRadius(); // the zone widens the longer the pet has been missing
 
   const canvas = document.getElementById('snoutMap');
   if (!canvas) return;
@@ -33,7 +35,7 @@ function drawLostZoneOverlay() {
 
   lostZoneFrame++;
   const pulse = 0.5 + 0.5 * Math.sin(lostZoneFrame * 0.04); // 0→1→0
-  const radiusPx = metresToPixels(BASE_RADIUS_M);
+  const radiusPx = metresToPixels(zoneRadiusM);
 
   // Outer pulse ring
   ctx.save();
@@ -73,7 +75,7 @@ function drawLostZoneOverlay() {
   // Radius label
   ctx.font = '11px "VT323", monospace';
   ctx.fillStyle = `rgba(255,100,100,0.5)`;
-  ctx.fillText(`~${BASE_RADIUS_M}m search zone`, pos.x, pos.y + radiusPx + 14);
+  ctx.fillText(`~${zoneRadiusM < 1000 ? Math.round(zoneRadiusM) + 'm' : (zoneRadiusM / 1000).toFixed(1) + 'km'} search zone`, pos.x, pos.y + radiusPx + 14);
 
   ctx.restore();
 }
@@ -103,6 +105,7 @@ function patchRenderLoop() {
 window.drawLostZone = function(pet) {
   lostZoneActive = true;
   lostZonePet = pet;
+  zoneRadiusM = BASE_RADIUS_M;
   patchRenderLoop();
 };
 
@@ -111,10 +114,16 @@ window.clearLostZone = function() {
   lostZonePet = null;
 };
 
+// Widen (or reset) the search zone, in metres. With no number it grows by the time
+// since the pet went missing: a lost pet can cover about 1 km an hour, capped at 5 km.
 window.updateLostZoneRadius = function(metres) {
-  // Called later when trail data expands the zone
-  // PLACEHOLDER for trail expansion feature
-  // BASE_RADIUS_M = metres; — currently const, make let when trails ship
+  if (!isFinite(metres)) {
+    const since = lostZonePet && lostZonePet.lostAt ? (Date.now() - lostZonePet.lostAt) / 3600000 : 0;
+    metres = BASE_RADIUS_M + since * 1000;
+  }
+  zoneRadiusM = Math.max(BASE_RADIUS_M, Math.min(5000, metres));
+  return zoneRadiusM;
 };
+window.getLostZoneRadius = function() { return zoneRadiusM; };
 
 })();

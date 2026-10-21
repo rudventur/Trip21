@@ -3,15 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RudVentur Social</title>
+<title>RudVentur Cemetery — Memorials</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="style-cemetery-patch.css">
 <link rel="manifest" href="../manifest.webmanifest">
 <meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="/RudVentur.com/embed/apple-touch-icon.png">
+<!-- Favicons — RudVentur R-in-circle logo -->
+<link rel="icon" type="image/png" sizes="192x192" href="https://rudventur.github.io/RudVentur.com/embed/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="https://rudventur.github.io/RudVentur.com/embed/icon-512.png">
+<link rel="apple-touch-icon" href="https://rudventur.github.io/RudVentur.com/embed/apple-touch-icon.png">
 <script src="https://rudventur.github.io/RudVentur.com/embed/rvView.js"></script>
+<script src="https://rudventur.github.io/RudVentur.com/embed/useRbox.js" defer></script>
 </head>
 <body>
 
@@ -20,22 +25,28 @@
   <div id="invited-banner" class="invited-banner" style="display:none"></div>
 
   <h1 class="landing-question">what is your <span class="poison">poison</span>?</h1>
-  <p class="landing-sub">pick your entity. no signup. no walls. just you.</p>
+  <p class="landing-sub">pick your entity. no signup. no walls. just you.<br>Cemetery entries remember names &amp; dates.</p>
 
   <div class="entity-grid" id="entity-grid"></div>
 
+  <div style="margin-top:2rem;">
+    <a href="browse.html" class="btn">browse all memorials</a>
+  </div>
+
 </div>
 
-<div class="footer">RudVentur Social v0.1 &#x2014; the universe where everyone gets a seat</div>
+<div class="footer">RudVentur Social v0.1 — Cemetery Memorials — the universe where everyone gets a seat</div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="js/firebase.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://rudventur.github.io/RudVentur.com/popcoin/config.js"></script>
+<script src="firebase.js"></script>
 <script>
 (function() {
   const grid = document.getElementById('entity-grid');
 
-  // Build entity cards
+  // Build entity cards (cemetery highlighted)
   Object.entries(ENTITY_TYPES).forEach(([type, info]) => {
     const card = document.createElement('a');
     card.href = 'profile.html?type=' + type;
@@ -58,7 +69,6 @@
         banner.style.display = 'block';
       }
     }).catch(function() {
-      // Try cache
       const cached = getCachedProfile(invitedBy);
       if (cached && cached.name) {
         banner.innerHTML = 'you were invited by <strong>' + escapeHtml(cached.name) + '</strong>';

@@ -221,6 +221,8 @@ cv.addEventListener('click', e => {
   if (ufoDrawingString && ufoHandleMapClick(w.lat, w.lng)) return;
   if (G.commentMode) { G.commentMode = false; cv.style.cursor = ''; document.getElementById('commentBtn').style.cssText = ''; const t = prompt('Drop your note:'); if (t) { G.comments.push({ lat:w.lat, lng:w.lng, text:t, from:'Anonymous', timestamp:new Date().toISOString().split('T')[0] }); showToast('Note dropped!', '#ffe600'); } return; }
   if (G.pinMode) { G.pinMode = false; document.getElementById('pinBtn').innerHTML = '\u{1F4CC} PIN'; document.getElementById('pinBtn').style.cssText = ''; cv.style.cursor = ''; openNewPin(w.lat, w.lng); return; }
+  const lost = typeof lostPetAt === 'function' && lostPetAt(e.clientX, e.clientY);
+  if (lost) showToast('🚨 ' + lost.name + ' is lost here since ' + new Date(lost.lostAt || Date.now()).toLocaleString('en-GB') + ' — seen them? Tell Snout First 🐾', '#ff4444');
   let clicked = false;
   G.listings.forEach(l => { const s = worldToScreen(l.lat, l.lng); if (Math.abs(e.clientX - s.x) < 15 && Math.abs(e.clientY - s.y + 10) < 20) { openView(l); clicked = true; } });
   if (!clicked && !(G.veh === 'plane' && planeAirborne)) { G.pos.lat = w.lat; G.pos.lng = w.lng; }
@@ -452,6 +454,7 @@ function loop() {
   drawListings();          // 11. ArtSpace pins
   drawSearchResults();     // 11b. Search sprinkle discoveries
   drawMushrooms();         // 11c. iNaturalist fungi sightings
+  if (typeof drawLostPets === 'function') drawLostPets(); // 11d. lost pets reported in Snout First
   drawWildlife();          // 11d. iNaturalist wildlife sightings
   drawComments();          // 12. Conspiracy comments
   // Mode-specific atmospheres

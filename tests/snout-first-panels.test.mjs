@@ -4,6 +4,8 @@
 // requests (map tiles, fonts, Firebase) are blocked, so nothing is sent anywhere.
 //   npm i -D puppeteer            (or: npm i -D puppeteer-core and set CHROME_PATH)
 //   node tests/snout-first-panels.test.mjs
+// The shared useRbox (https://rudventur.github.io/RudVentur.com/embed/…) is the one outside
+// request let through; set RUDVENTUR_EMBED=/path/to/RudVentur.com/embed to serve a local copy instead.
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -20,6 +22,7 @@ const server = http.createServer((req, res) => {
 }).listen(0);
 const URL_ = `http://127.0.0.1:${server.address().port}/snout-first.html`;
 
+const EMBED_URL = 'https://rudventur.github.io/RudVentur.com/embed/';
 const T0 = 1700000000000;
 const PETS = [
   { name: 'Ferajna', species: 'cat', breed: 'Tabby', bio: '', tags: ['Lap Monster'], mood: 'sleepy', lat: 51.505, lon: -0.09, timestamp: T0 },
@@ -41,7 +44,17 @@ async function open({ phone = false, off = [BUREK], storage = null } = {}) {
   page.errors = [];
   page.on('pageerror', e => page.errors.push(e.message));
   await page.setRequestInterception(true);
-  page.on('request', r => r.url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
+  page.on('request', r => {
+    const u = r.url();
+    if (u.startsWith('http://127.0.0.1')) return r.continue();
+    if (u.startsWith(EMBED_URL)) {
+      if (!process.env.RUDVENTUR_EMBED) return r.continue();
+      const f = path.join(process.env.RUDVENTUR_EMBED, u.slice(EMBED_URL.length).split('?')[0]);
+      if (!fs.existsSync(f)) return r.respond({ status: 404, body: '' });
+      return r.respond({ status: 200, contentType: TYPES[path.extname(f)] || 'application/octet-stream', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(f) });
+    }
+    return r.abort();
+  });
   await page.evaluateOnNewDocument((pets, off, storage) => {
     if (sessionStorage.getItem('seeded')) return;
     sessionStorage.setItem('seeded', '1');
@@ -163,14 +176,14 @@ console.log('— phone (touch)');
 console.log('— panel toggles');
 {
   const page = await open();
-  const ids = ['bar', 'stats', 'left', 'right', 'trail', 'pack', 'account'];
+  const ids = ['bar', 'stats', 'left', 'right', 'trail', 'pack'];
   for (const id of ids) {
     const n = await page.$$eval(`[data-panel-toggle="${id}"]`, els => els.length);
     check(`"${id}" has a toggle`, n >= 1, n);
   }
   // header toggles: every panel header uses the same button
   const heads = await page.$$eval('.sf-phead', els => els.map(h => !!h.querySelector('.sf-ptoggle')));
-  check('every panel header carries the same .sf-ptoggle button', heads.length >= 6 && heads.every(Boolean), heads);
+  check('every panel header carries the same .sf-ptoggle button', heads.length >= 5 && heads.every(Boolean), heads);
 
   check('the tab that brings the top bar back is hidden while the bar shows', await page.$eval('.sf-ptab-top', el => getComputedStyle(el).display === 'none'));
   await page.click('#sfBar .sf-ptoggle'); await sleep(250);
@@ -202,10 +215,13 @@ console.log('— panel toggles');
   await page.click('button[data-panel-toggle="pack"].hbtn'); await sleep(150);
   await page.click('#packPanel .sf-ptoggle'); await sleep(150);
   check('the Pack opens and its header "hide" closes it', !(await page.evaluate(() => S.packOpen)));
-  await page.click('#sfuCircle'); await sleep(150);
-  check('useRbox opens from the paw', await page.evaluate(() => sfPanels.isOpen('account')));
-  await page.click('#sfuPanel .sf-ptoggle'); await sleep(150);
-  check('the useRbox header "hide" closes it', !(await page.evaluate(() => sfPanels.isOpen('account'))));
+  await page.waitForFunction(() => window.rvUserbox && window.rvUserbox.leftSlot, { timeout: 15000 });
+  check('the shared useRbox is on the page (one R, no own copy)', await page.evaluate(() => document.querySelectorAll('#Rcircle').length === 1 && !document.getElementById('sfuHub')));
+  check('Snout First fills the left section of the shared box', await page.evaluate(() => document.querySelector('.rb-col-left #sfLeftSlot') !== null && !document.getElementById('rbLeftSlot').hidden));
+  await page.evaluate(() => { rvUserbox.open('left'); document.getElementById('sflSpotName').value = 'Park gate'; document.getElementById('sflSave').click(); });
+  check('saving a walk spot puts it in the shared profile', await page.evaluate(() => rvUserbox.get().savedLocations.some(l => l.name === 'Park gate')));
+  await page.evaluate(() => { S.lat = 0; S.lon = 0; document.querySelector('#sflSpots [data-go]').click(); });
+  check('GO flies the map to the spot', await page.evaluate(() => Math.abs(S.lat - 51.5) < 1));
   check('no script errors', page.errors.length === 0, page.errors);
   await page.close();
 }

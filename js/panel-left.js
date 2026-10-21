@@ -354,8 +354,8 @@ function injectLeftPanel() {
 
   <div class="lp-tv-overlay" id="tractiveModalOverlay">
     <div class="lp-tv-modal">
-      <h4>🔗 Tractive — coming later</h4>
-      <p class="lp-tv-note">Connecting a Tractive tracker isn't available yet, so Snout First doesn't ask for your Tractive email or password. Tractive has no official public way for other apps to read tracker positions, and we don't want to hold anyone's password on a server. Until then, use the Tractive app itself.</p>
+      <h4>🔗 Tractive</h4>
+      <p class="lp-tv-note">Snout First does not ask for your Tractive email or password. Tractive has no official public way for other apps to read tracker positions, and we don't want to hold anyone's password on a server. Use the Tractive app for a Tractive collar, or "+ link device" to make this phone the pet's tracker.</p>
       <div class="lp-tv-status" id="tractiveStatus"></div>
       <div class="lp-tv-btns">
         <button class="lp-tile-btn" onclick="closeTractiveModal()">OK</button>
@@ -706,8 +706,8 @@ function lpRenderTrackerEcosystem() {
     <div class="lp-tracker-grid">
       ${TRACKER_ECOSYSTEM.map(t => `<a class="lp-tracker-badge ${t.cls}" href="${t.url}" target="_blank" rel="noopener">${t.label}</a>`).join('')}
     </div>
-    <button class="lp-tracker-badge cellular" style="border-style:dashed;margin-top:4px;cursor:pointer;opacity:.6" onclick="openTractiveModal()">📡 Connect Tractive — coming later</button>
-    <div class="lp-tracker-hint">Got an AirTag/SmartTag/Fi/Findster already? Use "+ link device" below.</div>
+    <button class="lp-tracker-badge cellular" style="border-style:dashed;margin-top:4px;cursor:pointer;opacity:.6" onclick="openTractiveModal()">📡 Why Snout First does not log in to Tractive</button>
+    <div class="lp-tracker-hint">"+ link device" below makes this phone the pet's tracker: carry it on the walk (or clip it to the harness) and the pin follows its GPS while this page is open.</div>
   </div>`;
 }
 
@@ -718,11 +718,6 @@ window.openTractiveModal = function() {
 };
 window.closeTractiveModal = function() {
   document.getElementById('tractiveModalOverlay').classList.remove('show');
-};
-// Switched off: no Tractive password is collected or sent anywhere.
-window.submitTractiveSync = function() {
-  const status = document.getElementById('tractiveStatus');
-  if (status) status.textContent = 'Tractive connection is coming later.';
 };
 
 function mergeTractivePets(tractivePets) {
@@ -776,21 +771,47 @@ window.lpToggleGPS = function(i) {
   if (typeof savePets === 'function') savePets();
 };
 
+// "+ link device": this phone becomes the pet's tracker. Clip the phone to the harness
+// (or carry it on the walk) and the pet's pin follows its GPS while the page is open.
+// Positions stay on this device (savePets); nothing is sent anywhere by this.
+const lpTrackers = {};
+function lpStartTracker(pet) {
+  if (!navigator.geolocation || lpTrackers[pet.name] != null) return false;
+  lpTrackers[pet.name] = navigator.geolocation.watchPosition(pos => {
+    pet.lat = pos.coords.latitude; pet.lon = pos.coords.longitude;
+    pet.gpsAt = Date.now();
+    if (typeof savePets === 'function') savePets();
+    lpRender();
+  }, err => {
+    if (typeof toast === 'function') toast('📍 Tracker for ' + pet.name + ': ' + err.message);
+  }, { enableHighAccuracy: true, maximumAge: 10000 });
+  return true;
+}
+function lpStopTracker(pet) {
+  if (lpTrackers[pet.name] != null) navigator.geolocation.clearWatch(lpTrackers[pet.name]);
+  delete lpTrackers[pet.name];
+}
 window.lpLinkDevice = function(i) {
   if (typeof S === 'undefined') return;
-  // PLACEHOLDER — connect to GPS tracker device API here
-  // e.g. Tractive, Findster, Pod Tracker, etc.
-  const name = S.pets[i].name;
-  if (S.pets[i].gpsDevice) {
-    S.pets[i].gpsDevice = false;
+  const pet = S.pets[i], name = pet.name;
+  if (pet.gpsDevice) {
+    pet.gpsDevice = false;
+    lpStopTracker(pet);
     if (typeof toast === 'function') toast(`📍 Tracker unlinked from ${name}`);
   } else {
-    S.pets[i].gpsDevice = true;
-    if (typeof toast === 'function') toast(`🔗 Tracker linked to ${name} (placeholder)`);
+    if (!navigator.geolocation) { if (typeof toast === 'function') toast('📍 This browser has no GPS'); return; }
+    pet.gpsDevice = true;
+    lpStartTracker(pet);
+    if (typeof toast === 'function') toast(`🔗 This phone is now ${name}'s tracker — the pin follows it while this page is open`);
   }
   lpRender();
   if (typeof savePets === 'function') savePets();
 };
+// trackers linked on an earlier visit start again (the browser asks for GPS first)
+window.addEventListener('load', () => {
+  if (typeof S === 'undefined' || !S.pets) return;
+  S.pets.forEach(p => { if (p.gpsDevice && !p._fbId) lpStartTracker(p); });
+});
 
 // ── Notebook tab ──
 function lpRenderNotebook(el) {

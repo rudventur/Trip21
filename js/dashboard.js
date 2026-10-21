@@ -68,6 +68,24 @@ function isMine(pet) {
   if (pet.registered_by) return typeof getUid === 'function' && pet.registered_by === getUid();
   return true;
 }
+// Friends and family: pet keys and owner ids marked 🤝 on this device ('sf_friends').
+const FRIENDS_KEY = 'sf_friends';
+function friends() {
+  try { const f = JSON.parse(localStorage.getItem(FRIENDS_KEY) || '{}') || {}; return { pets: f.pets || [], owners: f.owners || [] }; }
+  catch (e) { return { pets: [], owners: [] }; }
+}
+function isFriend(pet) {
+  if (!pet || isMine(pet)) return false;
+  const f = friends();
+  return f.pets.includes(petKey(pet)) || (!!pet.registered_by && f.owners.includes(pet.registered_by));
+}
+function setFriend(pet, on) {
+  const f = friends(), k = petKey(pet), o = pet.registered_by;
+  f.pets = f.pets.filter(x => x !== k); if (o) f.owners = f.owners.filter(x => x !== o);
+  if (on) { f.pets.push(k); if (o) f.owners.push(o); }
+  localStorage.setItem(FRIENDS_KEY, JSON.stringify(f));
+  changed();
+}
 function isOff(pet) { return state.off.includes(petKey(pet)); }
 function isPinned(pet) { return !isOff(pet) && state.pinned.includes(petKey(pet)); }
 
@@ -142,9 +160,9 @@ const LISTS = [
   { id: 'off', icon: '💤', label: 'Off dashboard', test: isOff,
     desc: 'Pets you took off your dashboard on this device. They are still on the map.',
     empty: 'Every pet is on your dashboard. Take one off with ✕ on the left and it waits here.' },
-  { id: 'friends', icon: '🤝', label: 'Friends and family', later: true, test: () => false,
-    desc: '',
-    empty: 'Friends and family lists are coming later. There is nothing here yet.' }
+  { id: 'friends', icon: '🤝', label: 'Friends and family', test: isFriend,
+    desc: 'Pets you marked 🤝 friend, and every pet of an owner you marked. Kept on this device.',
+    empty: 'No friends yet. Tap 🤝 friend on a pet in any list to add it (and its owner\'s other pets).' }
 ];
 function listById(id) { return LISTS.find(l => l.id === id) || null; }
 function listPets(id) {
@@ -405,7 +423,7 @@ window.sfDash = {
   STORE_KEY: DASH_KEY,
   LISTS, listById, listPets,
   key: petKey, byKey: petByKey, indexOf: petIndex,
-  isMine, isOff, isPinned,
+  isMine, isOff, isPinned, isFriend, setFriend,
   takeOff, putBack, pin, unpin,
   query: () => q, setQuery, matches, dashboardPets, focusFirstMatch,
   onChange, refresh: changed,

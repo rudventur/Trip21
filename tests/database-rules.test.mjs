@@ -1,4 +1,5 @@
 // Checks database.rules.json against the Firebase emulator (no real data is touched).
+// Covers group trip rooms and restaurant tables.
 // How to run it (needs Node and Java 21 or newer):
 //   npm install --no-save firebase-tools @firebase/rules-unit-testing firebase@10
 //   npx firebase emulators:exec --only database --project demo-trip21 "node tests/database-rules.test.mjs"
@@ -65,6 +66,68 @@ await t("member cannot change meta host", () => assertFails(set(ref(B, `rooms/${
 await t("nothing outside rooms is readable", () => assertFails(get(ref(A, `secret`))));
 await t("nothing outside rooms is writable", () => assertFails(set(ref(A, `secret`), 1)));
 await t("host deletes the room", () => assertSucceeds(remove(ref(A, `rooms/${R}`))));
+
+// ───────── restaurant tables ─────────
+const G = (uid) => env.authenticatedContext(uid, { firebase: { sign_in_provider: "google.com" } }).database();
+const OWN = G("owner1"), ADM = G("boss"), OTHER = G("owner2");
+const RID = "node-12345", TID = "t1", CODE = "ABC234", HOUR = 3600000;
+await env.withSecurityRulesDisabled((c) => set(ref(c.database(), "admins/boss"), true));
+const claim = { owner: "owner1", name: "Café Test", lat: 51.5, lon: -0.1, approved: false, open: false, claimed: serverTimestamp() };
+const guest = (n, code = CODE) => ({ name: n, color: "#2ec4b6", joined: serverTimestamp(), code });
+await t("anonymous user cannot claim a restaurant", () => assertFails(set(ref(A, `restaurants/${RID}`), { ...claim, owner: "alice" })));
+await t("claim with a bad place id rejected", () => assertFails(set(ref(OWN, `restaurants/pizza`), claim)));
+await t("owner cannot claim already approved", () => assertFails(set(ref(OWN, `restaurants/${RID}`), { ...claim, approved: true })));
+await t("Google user claims a restaurant", () => assertSucceeds(set(ref(OWN, `restaurants/${RID}`), claim)));
+await t("someone else cannot take over the claim", () => assertFails(set(ref(OTHER, `restaurants/${RID}`), { ...claim, owner: "owner2" })));
+await t("owner cannot approve own restaurant", () => assertFails(set(ref(OWN, `restaurants/${RID}/approved`), true)));
+await t("unapproved owner cannot open", () => assertFails(set(ref(OWN, `restaurants/${RID}/open`), true)));
+await t("unapproved owner cannot add tables", () => assertFails(set(ref(OWN, `restaurants/${RID}/tables/${TID}`), { name: "Window" })));
+await t("admin can read own admin flag", () => assertSucceeds(get(ref(ADM, `admins/boss`))));
+await t("others cannot read the admin list", () => assertFails(get(ref(OWN, `admins/boss`))));
+await t("admin approves the restaurant", () => assertSucceeds(set(ref(ADM, `restaurants/${RID}/approved`), true)));
+await t("owner adds a table", () => assertSucceeds(set(ref(OWN, `restaurants/${RID}/tables/${TID}`), { name: "Window" })));
+await t("table name too long rejected", () => assertFails(set(ref(OWN, `restaurants/${RID}/tables/t2`), { name: "x".repeat(40) })));
+await t("other person cannot add a table", () => assertFails(set(ref(OTHER, `restaurants/${RID}/tables/t9`), { name: "Mine" })));
+await t("owner renames the restaurant", () => assertSucceeds(set(ref(OWN, `restaurants/${RID}/name`), "Café Renamed")));
+await t("owner opens the restaurant", () => assertSucceeds(set(ref(OWN, `restaurants/${RID}/open`), true)));
+await t("anyone signed in can list restaurants", () => assertSucceeds(get(ref(B, `restaurants`))));
+await t("code lasting more than 4 hours rejected", () => assertFails(set(ref(OWN, `tableCodes/${CODE}`), { r: RID, table: TID, owner: "owner1", expires: Date.now() + 5 * HOUR })));
+await t("code already expired rejected", () => assertFails(set(ref(OWN, `tableCodes/${CODE}`), { r: RID, table: TID, owner: "owner1", expires: Date.now() - 1000 })));
+await t("code for a table that does not exist rejected", () => assertFails(set(ref(OWN, `tableCodes/${CODE}`), { r: RID, table: "nope", owner: "owner1", expires: Date.now() + HOUR })));
+await t("non-owner cannot make a code", () => assertFails(set(ref(OTHER, `tableCodes/${CODE}`), { r: RID, table: TID, owner: "owner2", expires: Date.now() + HOUR })));
+await t("owner makes a 4 hour code", () => assertSucceeds(set(ref(OWN, `tableCodes/${CODE}`), { r: RID, table: TID, owner: "owner1", expires: Date.now() + 4 * HOUR })));
+await t("owner refreshes the code expiry", () => assertSucceeds(set(ref(OWN, `tableCodes/${CODE}/expires`), Date.now() + 4 * HOUR)));
+await t("other person cannot overwrite the code", () => assertFails(set(ref(OTHER, `tableCodes/${CODE}`), { r: RID, table: TID, owner: "owner2", expires: Date.now() + HOUR })));
+await t("owner stores the code privately", () => assertSucceeds(set(ref(OWN, `ownerCodes/${RID}/${TID}`), CODE)));
+await t("guest cannot read the owner's codes", () => assertFails(get(ref(B, `ownerCodes/${RID}`))));
+await t("guest cannot list all codes", () => assertFails(get(ref(B, `tableCodes`))));
+await t("guest looks up a code they typed", () => assertSucceeds(get(ref(B, `tableCodes/${CODE}`))));
+await t("guest cannot read a table before sitting", () => assertFails(get(ref(B, `tables/${RID}/${TID}`))));
+await t("guest with a wrong code cannot sit", () => assertFails(set(ref(B, `tables/${RID}/${TID}/members/bob`), guest("Bob", "ZZZ234"))));
+await t("guest cannot use the code at another table", () => assertFails(set(ref(B, `tables/${RID}/t2/members/bob`), guest("Bob"))));
+await t("guest sits at the table with the code", () => assertSucceeds(set(ref(B, `tables/${RID}/${TID}/members/bob`), guest("Bob"))));
+await t("guest cannot seat someone else", () => assertFails(set(ref(B, `tables/${RID}/${TID}/members/carol`), guest("Carol"))));
+await t("seated guest reads the table", () => assertSucceeds(get(ref(B, `tables/${RID}/${TID}`))));
+await t("seated guest sets presence", () => assertSucceeds(set(ref(B, `tables/${RID}/${TID}/presence/bob`), { online: true, lastSeen: serverTimestamp() })));
+await t("seated guest chats", () => assertSucceeds(set(push(ref(B, `tables/${RID}/${TID}/chat`)), { by: "bob", name: "Bob", text: "Hello table!", t: serverTimestamp() })));
+await t("chat as someone else rejected", () => assertFails(set(push(ref(B, `tables/${RID}/${TID}/chat`)), { by: "alice", name: "A", text: "hi", t: serverTimestamp() })));
+await t("chat message too long rejected", () => assertFails(set(push(ref(B, `tables/${RID}/${TID}/chat`)), { by: "bob", name: "Bob", text: "x".repeat(301), t: serverTimestamp() })));
+await t("outsider cannot chat", () => assertFails(set(push(ref(C, `tables/${RID}/${TID}/chat`)), { by: "carol", name: "C", text: "hi", t: serverTimestamp() })));
+await t("owner reads the table", () => assertSucceeds(get(ref(OWN, `tables/${RID}/${TID}`))));
+await t("owner chats at the table", () => assertSucceeds(set(push(ref(OWN, `tables/${RID}/${TID}/chat`)), { by: "owner1", name: "Owner", text: "Welcome", t: serverTimestamp() })));
+await t("closing the restaurant cuts guests off", async () => { await set(ref(OWN, `restaurants/${RID}/open`), false); await assertFails(get(ref(B, `tables/${RID}/${TID}`))); await set(ref(OWN, `restaurants/${RID}/open`), true); });
+await env.withSecurityRulesDisabled((c) => set(ref(c.database(), `tableCodes/OLD234`), { r: RID, table: TID, owner: "owner1", expires: Date.now() - 1000 }));
+await t("expired code cannot be looked up", () => assertFails(get(ref(C, `tableCodes/OLD234`))));
+await t("expired code cannot seat a guest", () => assertFails(set(ref(C, `tables/${RID}/${TID}/members/carol`), guest("Carol", "OLD234"))));
+await env.withSecurityRulesDisabled((c) => set(ref(c.database(), `tableCodes/${CODE}/expires`), Date.now() - 1000));
+await t("guest loses the table once the code expires", () => assertFails(get(ref(B, `tables/${RID}/${TID}`))));
+await t("guest cannot chat once the code expires", () => assertFails(set(push(ref(B, `tables/${RID}/${TID}/chat`)), { by: "bob", name: "Bob", text: "still here?", t: serverTimestamp() })));
+await t("guest can still leave (remove own seat)", () => assertSucceeds(remove(ref(B, `tables/${RID}/${TID}/members/bob`))));
+await t("other person cannot clear the table", () => assertFails(remove(ref(OTHER, `tables/${RID}/${TID}`))));
+await t("owner clears the table", () => assertSucceeds(remove(ref(OWN, `tables/${RID}/${TID}`))));
+await t("owner deletes the old code", () => assertSucceeds(remove(ref(OWN, `tableCodes/${CODE}`))));
+await t("other person cannot delete the restaurant", () => assertFails(remove(ref(OTHER, `restaurants/${RID}`))));
+await t("admin can refuse (delete) a restaurant", () => assertSucceeds(remove(ref(ADM, `restaurants/${RID}`))));
 await env.cleanup();
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

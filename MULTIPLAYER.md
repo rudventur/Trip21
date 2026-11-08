@@ -74,3 +74,40 @@ Everything used here (live database, anonymous sign-in) works on the free Spark 
 - A room code has five characters, so a determined person could guess codes. Locking the room once everyone is in closes that gap. A later version could add a password.
 - On the Feeling Lucky page the players appear on the result map (after a roll, a real street map) and on the small start map (a grid globe). On the globe page they appear on the globe.
 - This does not use the older map-merger-venti Firebase project at all; that project is untouched.
+
+# Restaurant tables
+
+Guests talk to each other at restaurant tables. A restaurant owner sets up the tables, and every table has a code. The code works while the owner has Trip21 open, and for 4 hours after the owner leaves. The code lives in the same Firebase project (trip21-25f36). The code for this is in `rudTrip20/js/restaurant-tables.js`.
+
+## For guests
+
+- Open the useRbox (the R circle, top right). In the left section, **🍽️ RESTAURANTS** lists the restaurants that are open and their tables.
+- Type the code you see on your table and click **Join table**, or scan the code printed on the table. It opens Trip21 with `?table=CODE` and sits you down straight away.
+- At the table, a small panel shows who is there (● online, ○ away) and a chat.
+- When the code runs out, or the owner closes the restaurant, or the owner makes a new code for the table, you leave the table automatically.
+
+## For owners
+
+1. In the useRbox settings (right section) open **🍽️ MY RESTAURANT (TRIP21)** and click **Sign in with Google**.
+2. Find your place on openstreetmap.org, click it, copy the link (for example `https://www.openstreetmap.org/node/123456`) and paste it into the claim box. Check the name and click **Claim**.
+3. Wait until Mateusz approves it. Then you can open or close the restaurant, add, rename and remove tables, see each table code and how long it has left, make a new code (this removes the people at that table), and print a sheet with a scannable code for every table.
+4. While you keep Trip21 open, every code is refreshed every 5 minutes so it stays valid for the next 4 hours. When you sign out or close Trip21, the codes run out 4 hours later. When you come back, the same codes start working again, so a printed sheet stays useful.
+
+## For Mateusz (the approver)
+
+- Your own approver flag is stored in the database at `admins/<your user id>` with the value `true`. Nobody can write it from the web page; you add it once by hand in the Firebase console.
+- Once you are an approver, **🛡️ CLAIMS WAITING** appears under My restaurant with **Approve** and **Refuse** buttons.
+
+## What the rules enforce for tables
+
+- Only people signed in with Google can claim a restaurant, and a claim always starts as not approved and closed. Only an approver can approve. Nobody can take over somebody else's claim.
+- Only the approved owner can open the restaurant, change its tables and make codes.
+- A code can be valid for at most 4 hours (plus 5 minutes of slack) from the database clock. Expired codes cannot be read, and the full list of codes cannot be read at all.
+- You can only sit at a table with a code that is still valid, belongs to that exact table, and while the restaurant is open and approved.
+- Reading the table, being online there and chatting all need a still valid code, so once the code runs out the guests lose the table at once, even if their page is still open.
+- Chat messages are posted under your own identity, cannot be edited, and have up to 300 characters.
+- The owner can read and chat at their own tables and clear a table.
+
+## Testing on this computer
+
+`tests/database-rules.test.mjs` now also checks the restaurant rules (100 checks in total). For a test in the browser, start the emulators (`npx firebase emulators:start --only database,auth --project trip21-25f36`), serve the repository folder, and open `http://localhost:<port>/rudTrip20/index.html?emulator=1&table=CODE`. The `emulator=1` switch only works on localhost.

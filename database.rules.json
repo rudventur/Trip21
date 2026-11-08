@@ -195,6 +195,159 @@
           ".validate": false
         }
       }
+    },
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+    "restaurants": {
+      ".read": "auth != null",
+      "$r": {
+        ".validate": "$r.matches(/^(node|way|relation)-[0-9]{1,15}$/) && newData.hasChildren(['owner', 'name', 'approved', 'open', 'claimed'])",
+        ".write": "auth != null && ((!data.exists() && auth.token.firebase.sign_in_provider === 'google.com' && newData.child('owner').val() === auth.uid && newData.child('approved').val() === false && newData.child('open').val() === false) || (!newData.exists() && (data.child('owner').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)))",
+        "owner": {
+          ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
+        },
+        "claimed": {
+          ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)"
+        },
+        "approved": {
+          ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+          ".validate": "newData.isBoolean()"
+        },
+        "name": {
+          ".write": "auth != null && data.parent().child('owner').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+        },
+        "lat": {
+          ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+        },
+        "lon": {
+          ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+        },
+        "open": {
+          ".write": "auth != null && data.parent().child('owner').val() === auth.uid && data.parent().child('approved').val() === true",
+          ".validate": "newData.isBoolean()"
+        },
+        "tables": {
+          ".write": "auth != null && data.parent().child('owner').val() === auth.uid && data.parent().child('approved').val() === true",
+          "$t": {
+            ".validate": "$t.matches(/^[A-Za-z0-9_-]{1,24}$/) && newData.hasChildren(['name'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
+      ".indexOn": [
+        "owner"
+      ]
+    },
+    "ownerCodes": {
+      "$r": {
+        ".read": "auth != null && root.child('restaurants').child($r).child('owner').val() === auth.uid",
+        ".write": "auth != null && root.child('restaurants').child($r).child('owner').val() === auth.uid",
+        "$t": {
+          ".validate": "newData.isString() && newData.val().matches(/^[A-HJ-NP-Z2-9]{6}$/)"
+        }
+      }
+    },
+    "tableCodes": {
+      "$code": {
+        ".read": "auth != null && data.child('expires').val() > now",
+        ".write": "auth != null && (!data.exists() || data.child('owner').val() === auth.uid) && (!newData.exists() || (root.child('restaurants').child(newData.child('r').val()).child('owner').val() === auth.uid && root.child('restaurants').child(newData.child('r').val()).child('approved').val() === true && root.child('restaurants').child(newData.child('r').val()).child('tables').child(newData.child('table').val()).exists()))",
+        ".validate": "$code.matches(/^[A-HJ-NP-Z2-9]{6}$/) && newData.hasChildren(['r', 'table', 'owner', 'expires']) && newData.child('owner').val() === auth.uid",
+        "r": {
+          ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
+        },
+        "table": {
+          ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
+        },
+        "owner": {
+          ".validate": "newData.isString()"
+        },
+        "expires": {
+          ".validate": "newData.isNumber() && newData.val() > now && newData.val() <= now + 14700000"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "tables": {
+      "$r": {
+        "$t": {
+          ".read": "auth != null && (root.child('restaurants').child($r).child('owner').val() === auth.uid || (root.child('tables').child($r).child($t).child('members').child(auth.uid).exists() && root.child('tableCodes').child(root.child('tables').child($r).child($t).child('members').child(auth.uid).child('code').val() + '').child('expires').val() > now && root.child('tableCodes').child(root.child('tables').child($r).child($t).child('members').child(auth.uid).child('code').val() + '').child('r').val() === $r && root.child('tableCodes').child(root.child('tables').child($r).child($t).child('members').child(auth.uid).child('code').val() + '').child('table').val() === $t && root.child('restaurants').child($r).child('approved').val() === true && root.child('restaurants').child($r).child('open').val() === true))",
+          ".write": "auth != null && !newData.exists() && (root.child('restaurants').child($r).child('owner').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
+          "members": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && (!newData.exists() || (root.child('tableCodes').child(newData.child('code').val() + '').child('expires').val() > now && root.child('tableCodes').child(newData.child('code').val() + '').child('r').val() === $r && root.child('tableCodes').child(newData.child('code').val() + '').child('table').val() === $t && root.child('restaurants').child($r).child('approved').val() === true && root.child('restaurants').child($r).child('open').val() === true))",
+              ".validate": "newData.hasChildren(['name', 'color', 'joined', 'code'])",
+              "name": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+              },
+              "color": {
+                ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"
+              },
+              "joined": {
+                ".validate": "newData.isNumber()"
+              },
+              "code": {
+                ".validate": "newData.isString()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "presence": {
+            "$uid": {
+              ".write": "auth.uid === $uid && (!newData.exists() || auth != null && root.child('tables').child($r).child($t).child('members').child(auth.uid).exists() && root.child('tableCodes').child(root.child('tables').child($r).child($t).child('members').child(auth.uid).child('code').val() + '').child('expires').val() > now && root.child('tableCodes').child(root.child('tables').child($r).child($t).child('members').child(auth.uid).child('code').val() + '').child('r').val() === $r && root.child('tableCodes').child(root.child('tables').child($r).child($t).child('members').child(auth.uid).child('code').val() + '').child('table').val() === $t && root.child('restaurants').child($r).child('approved').val() === true && root.child('restaurants').child($r).child('open').val() === true)",
+              ".validate": "newData.hasChildren(['online', 'lastSeen'])",
+              "online": {
+                ".validate": "newData.isBoolean()"
+              },
+              "lastSeen": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "chat": {
+            "$id": {
+              ".write": "!data.exists() && newData.exists() && newData.child('by').val() === auth.uid && (auth != null && root.child('tables').child($r).child($t).child('members').child(auth.uid).exists() && root.child('tableCodes').child(root.child('tables').child($r).child($t).child('members').child(auth.uid).child('code').val() + '').child('expires').val() > now && root.child('tableCodes').child(root.child('tables').child($r).child($t).child('members').child(auth.uid).child('code').val() + '').child('r').val() === $r && root.child('tableCodes').child(root.child('tables').child($r).child($t).child('members').child(auth.uid).child('code').val() + '').child('table').val() === $t && root.child('restaurants').child($r).child('approved').val() === true && root.child('restaurants').child($r).child('open').val() === true || (auth != null && root.child('restaurants').child($r).child('owner').val() === auth.uid))",
+              ".validate": "newData.hasChildren(['by', 'name', 'text', 't'])",
+              "by": {
+                ".validate": "newData.isString()"
+              },
+              "name": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+              },
+              "text": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 300"
+              },
+              "t": {
+                ".validate": "newData.isNumber() && newData.val() === now"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
     }
   }
 }
